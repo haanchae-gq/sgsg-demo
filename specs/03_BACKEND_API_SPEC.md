@@ -216,6 +216,16 @@ const VatBasis = Type.Union([
   Type.Literal('EXCLUDED')
 ])
 
+// 채널 관리 열거형
+const ChannelType = Type.Union([
+  Type.Literal('INTERNAL'),
+  Type.Literal('PARTNER')
+])
+const ChannelStatus = Type.Union([
+  Type.Literal('ACTIVE'),
+  Type.Literal('INACTIVE')
+])
+
 // 전문가 관리 확장 열거형
 const AccountType = Type.Union([
   Type.Literal('MASTER'),
@@ -499,6 +509,21 @@ const ServiceExtraFieldSchema = Type.Object({
   displayLocation: DisplayLocation,
   sortOrder: Type.Integer({ minimum: 0 }),
   isActive: Type.Boolean()
+})
+
+// 채널 마스터
+const ChannelSchema = Type.Object({
+  ...CommonFields,
+  channelCode: Type.String({ pattern: '^[a-zA-Z0-9_-]+$' }),
+  channelName: Type.String({ minLength: 1, maxLength: 100 }),
+  channelType: ChannelType,
+  channelStatus: ChannelStatus,
+  partnerCompanyName: Type.Optional(Type.String({ maxLength: 200 })),
+  partnerContactName: Type.Optional(Type.String({ maxLength: 50 })),
+  partnerContactEmail: Type.Optional(Type.String({ format: 'email' })),
+  partnerContactPhone: Type.Optional(Type.String({ pattern: '^01[0-9]{8,9}$' })),
+  note: Type.Optional(Type.String({ maxLength: 1000 })),
+  sortOrder: Type.Integer({ minimum: 0 })
 })
 
 // 채널별 수수료 설정
@@ -833,6 +858,34 @@ const OrderSchema = Type.Object({
 |--------|------------|------|------|
 | GET | `/admin/experts/:expertId/audit-logs` | 전문가 변경 이력 조회 | Admin |
 | GET | `/admin/experts/:expertId/change-history` | 특정 필드 변경 이력 조회 | Admin |
+
+### 13. 채널 관리 API (관리자) (`/api/v1/admin/channels`)
+**백오피스 메뉴 09 채널관리 기능을 위한 관리자 전용 API**
+
+#### 13.1 채널 마스터 관리
+
+| 메서드 | 엔드포인트 | 설명 | 권한 |
+|--------|------------|------|------|
+| POST | `/admin/channels` | 채널 생성 (시나리오 1, 2) | Admin |
+| GET | `/admin/channels` | 채널 목록 조회 (필터: 채널 유형, 상태) | Admin |
+| GET | `/admin/channels/:channelId` | 채널 상세 정보 조회 | Admin |
+| PUT | `/admin/channels/:channelId` | 채널 정보 수정 (시나리오 4) | Admin |
+| PUT | `/admin/channels/:channelId/status` | 채널 상태 전환 (ACTIVE/INACTIVE) (시나리오 5) | Admin |
+
+#### 13.2 채널 스코프 관리
+
+| 메서드 | 엔드포인트 | 설명 | 권한 |
+|--------|------------|------|------|
+| GET | `/admin/channels/:channelId/scopes` | 채널 스코프(서비스 매핑) 조회 | Admin |
+| PUT | `/admin/channels/:channelId/scopes` | 채널 스코프 설정 (시나리오 7) | Admin |
+
+#### 13.3 채널별 수수료 관리
+
+| 메서드 | 엔드포인트 | 설명 | 권한 |
+|--------|------------|------|------|
+| GET | `/admin/channels/:channelId/commissions` | 채널 수수료 설정 조회 | Admin |
+| POST | `/admin/channels/:channelId/commissions` | 채널 수수료 설정 등록 | Admin |
+| PUT | `/admin/channels/:channelId/commissions/:commissionId` | 채널 수수료 설정 수정 | Admin |
 
 ---
 

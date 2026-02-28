@@ -478,6 +478,47 @@ enum DisplayLocation {
 - `fieldType = SELECT`인 경우 `options` 필수
 - 중분류 필드는 하위 소분류에 상속 적용 (소분류에서 오버라이드 가능)
 
+#### `channels` - 채널 마스터
+**채널 관리**: 주문 유입 채널 마스터 (자사/제휴사)
+
+|| 필드 | 타입 | 제약 | 설명 |
+||------|------|------|------|
+|| id | String @id @default(cuid()) | PK | 고유 식별자 |
+|| channelCode | String @unique @map("channel_code") | 고유 | 채널 코드 (영문/숫자 조합) |
+|| channelName | String @unique @map("channel_name") | 고유 | 채널명 (주문관리/전문가웹앱 노출용) |
+|| channelType | ChannelType @map("channel_type") | 필수 | 채널 유형 (INTERNAL/PARTNER) |
+|| channelStatus | ChannelStatus @default(ACTIVE) @map("channel_status") | 기본값 | 채널 상태 (ACTIVE/INACTIVE) |
+|| partnerCompanyName | String? @map("partner_company_name") | 선택 | 제휴사명 (channel_type = PARTNER인 경우 필수) |
+|| partnerContactName | String? @map("partner_contact_name") | 선택 | 제휴 담당자명 |
+|| partnerContactEmail | String? @map("partner_contact_email") | 선택 | 제휴 담당자 이메일 |
+|| partnerContactPhone | String? @map("partner_contact_phone") | 선택 | 제휴 담당자 전화번호 |
+|| note | String? @map("note") | 선택 | 내부 운영 메모 |
+|| sortOrder | Int @default(0) @map("sort_order") | 기본값 | 정렬 순서 |
+|| createdAt | DateTime @default(now()) @map("created_at") | 기본값 | 생성 시간 |
+|| updatedAt | DateTime @default(now()) @updatedAt @map("updated_at") | 기본값 | 수정 시간 |
+|| createdBy | String @map("created_by") | FK(users) | 생성자 |
+|| updatedBy | String? @map("updated_by") | FK(users) | 수정자 |
+
+**열거형**:
+```prisma
+enum ChannelType {
+  INTERNAL  // 자사 채널
+  PARTNER   // 제휴사 채널
+}
+
+enum ChannelStatus {
+  ACTIVE    // 활성
+  INACTIVE  // 비활성
+}
+```
+
+**비즈니스 규칙**:
+- `channelCode`, `channelName`, `channelType`은 생성 후 수정 불가 (불변 필드)
+- `channel_type = PARTNER`인 경우 `partnerCompanyName` 필수
+- `channelStatus = INACTIVE`인 경우 신규 주문 생성 불가
+- `channelCode`는 영문/숫자 조합 권장, 시스템 내 고유
+- `channelName`은 주문관리 및 전문가웹앱에 노출되는 공식 명칭
+
 #### `service_category_channel_commissions` - 채널별 수수료 설정
 **채널 수수료**: 소분류별 채널 수수료 정책
 
@@ -991,6 +1032,7 @@ enum MembershipStatus { ACTIVE, SUSPENDED, INACTIVE, EXPIRED }
 - 배정 이력은 마스터 계정 기준 기록 (assigned_worker_id로 서브 계정 구분)
 - 일일 배정 상한은 멤버십 가중치와 독립적 적용
 - region_groups 테이블은 시스템 관리용 참조 데이터
+- 참고: 배정 로직 상세 사용자 시나리오는 `/docs/menu10_assignment_logic_spec_ko.md` 참조
 
 ---
 
