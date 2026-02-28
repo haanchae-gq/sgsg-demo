@@ -253,6 +253,7 @@ enum ExpertOperationalStatus { active, inactive, busy, vacation }
 - `rating`은 리뷰 평점의 이동 평균 계산
 - `approval_status`와 `active_status` 조합 규칙: PENDING + ACTIVE 금지, APPROVED + ACTIVE만 운영 가능
 - `membership_enabled = true`인 경우 `approval_status = APPROVED` 및 `active_status = ACTIVE` 필수
+- 멤버십 구좌 수(`membership_slot_count`)는 마스터 계정 단위로 관리되며, 멤버십 전문가 판단 기준으로 사용됨
 - `service_category_mid_available_list`는 `service_subcategories.id` 참조
 - `region_groups`는 `region_groups` 테이블 기준 매핑
 

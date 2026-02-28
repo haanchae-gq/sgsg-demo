@@ -358,9 +358,10 @@ sgsg-adm/
    - 활성/비활성 상태 관리
 
 2. **멤버십 관리 모듈**
-   - 멤버십 구좌 설정 (membership_slot_count)
-   - 가중치 기반 우선 배정 로직
-   - 멤버십 적용 중분류 제한
+   - 멤버십 구좌 설정 (membership_slot_count): 마스터 계정 단위로 관리되는 멤버십 구좌 수
+   - 가중치 기반 우선 배정 로직: 멤버십 전문가는 membership_slot_count 값만큼 가중치 부여 (일반 전문가 = 1)
+   - 멤버십 적용 중분류 제한: 특정 서비스 중분류에만 멤버십 구좌 적용 가능
+   - v2/v3 확장 포인트: 일일 배정 상한, 품질 지표 연동, 슬롯 상한 설계, 포인터 스코프 확장
 
 3. **패널티 관리 모듈**
    - SOFT_LIMIT, HARD_BLOCK, CATEGORY_LIMIT, REGION_LIMIT, MEMBERSHIP_SUSPEND 유형
@@ -407,6 +408,7 @@ sgsg-adm/
 - **캐싱 전략**: 자주 조회되는 전문가 프로필은 Redis 캐싱
 - **비동기 처리**: 대량 배정 이력 조회는 배치 처리
 - **모니터링**: 전문가별 배정 성과 지표 실시간 모니터링
+- **참고 문서**: 배정 로직 상세 사용자 시나리오는 `/docs/menu10_assignment_logic_spec_ko.md` 참조
 
 ---
 
