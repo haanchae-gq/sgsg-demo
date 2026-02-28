@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: sgsg-postgres
+    environment:
+      POSTGRES_USER: sgsg
+      POSTGRES_PASSWORD: sgsg5goqual123!
+      POSTGRES_DB: sgsg_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sgsg -d sgsg_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sgsg-network
+
+  # 백엔드 API 서비스 (추후 구현)
+  # api:
+  #   build:
+  #     context: ./sgsg-api
+  #     dockerfile: Dockerfile.dev
+  #   container_name: sgsg-api
+  #   environment:
+  #     NODE_ENV: development
+  #     DB_URL: postgresql://sgsg:sgsg5goqual123!@postgres:5432/sgsg_db
+  #   ports:
+  #     - "3001:3001"
+  #   volumes:
+  #     - ./sgsg-api:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - sgsg-network
+
+  # 어드민 대시보드 (추후 구현)
+  # admin:
+  #   build:
+  #     context: ./sgsg-adm
+  #     dockerfile: Dockerfile.dev
+  #   container_name: sgsg-admin
+  #   environment:
+  #     NODE_ENV: development
+  #     VITE_API_URL: http://api:3001
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./sgsg-adm:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - sgsg-network
+
+  # 전문가 모바일 앱 (추후 구현)
+  # mobile:
+  #   build:
+  #     context: ./sgsg-exp
+  #     dockerfile: Dockerfile.dev
+  #   container_name: sgsg-mobile
+  #   environment:
+  #     NODE_ENV: development
+  #     VITE_API_URL: http://api:3001
+  #   ports:
+  #     - "3002:3002"
+  #   volumes:
+  #     - ./sgsg-exp:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - api
+  #   networks:
+  #     - sgsg-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  sgsg-network:
+    driver: bridge

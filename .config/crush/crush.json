@@ -1,0 +1,50 @@
+{
+  "$schema": "https://charm.land/crush.json",
+  "lsp": {
+    "typescript": {
+      "command": "npx",
+      "args": ["typescript-language-server", "--stdio"]
+    },
+    "prisma": {
+      "command": "prisma-language-server",
+      "args": ["--stdio"]
+    }
+  },
+  "mcp": {
+    "postgres": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "$DB_URL"],
+      "timeout": 120,
+      "disabled": false
+    },
+    "github": {
+      "type": "http",
+      "url": "https://api.github.com/mcp",
+      "headers": {
+        "Authorization": "Bearer $GITHUB_TOKEN",
+        "User-Agent": "Crush"
+      },
+      "timeout": 120,
+      "disabled": false,
+      "disabled_tools": []
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "~/sgsg-demo"],
+      "timeout": 120,
+      "disabled": false
+    }
+  },
+  "permissions": {
+    "allowed_tools": [
+      "view",
+      "ls",
+      "grep",
+      "edit",
+      "bash",
+      "postgres_query"
+    ]
+  }
+}

@@ -1,0 +1,727 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_URL")
+}
+
+model User {
+  id                  String            @id @default(cuid())
+  email               String            @unique
+  phone               String            @unique
+  passwordHash        String            @map("password_hash")
+  name                String
+  role                UserRole
+  status              UserStatus        @default(active)
+  avatarUrl           String?           @map("avatar_url")
+  emailVerified       Boolean           @default(false) @map("email_verified")
+  phoneVerified       Boolean           @default(false) @map("phone_verified")
+  lastLoginAt         DateTime?         @map("last_login_at")
+  metadata            Json?             @default("{}")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at")
+  deletedAt           DateTime?         @map("deleted_at")
+  addresses           Address[]
+  admin               Admin?
+  auditLogs           AuditLog[]
+  customer            Customer?
+  expert              Expert?
+  notifications       Notification[]
+  uploadedAttachments OrderAttachment[]
+  orderNotes          OrderNote[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([role, status])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Customer {
+  id                 String    @id @default(cuid())
+  userId             String    @unique @map("user_id")
+  defaultAddressId   String?   @map("default_address_id")
+  totalSpent         Float     @default(0) @map("total_spent")
+  totalOrders        Int       @default(0) @map("total_orders")
+  favoriteCategories String[]  @default([]) @map("favorite_categories")
+  lastServiceDate    DateTime? @map("last_service_date")
+  preferences        Json?     @default("{\"language\": \"ko\", \"marketing\": true, \"notifications\": true}")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
+  defaultAddress     Address?  @relation("CustomerDefaultAddress", fields: [defaultAddressId], references: [id])
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders             Order[]
+  reviews            Review[]
+
+  @@index([totalSpent])
+  @@index([lastServiceDate])
+  @@map("customers")
+}
+
+model Expert {
+  id                   String                 @id @default(cuid())
+  userId               String                 @unique @map("user_id")
+  businessName         String                 @map("business_name")
+  businessNumber       String                 @unique @map("business_number")
+  businessType         BusinessType           @map("business_type")
+  businessAddressId    String?                @map("business_address_id")
+  serviceRegions       String[]               @map("service_regions")
+  rating               Float?                 @default(0)
+  totalCompletedOrders Int                    @default(0) @map("total_completed_orders")
+  totalEarnings        Float                  @default(0) @map("total_earnings")
+  expertStatus         ExpertStatus           @default(active) @map("expert_status")
+  bankName             String?                @map("bank_name")
+  accountNumber        String?                @map("account_number")
+  accountHolder        String?                @map("account_holder")
+  introduction         String?
+  certificateUrls      String[]               @default([]) @map("certificate_urls")
+  portfolioImages      String[]               @default([]) @map("portfolio_images")
+  metadata             Json?                  @default("{}")
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @default(now()) @updatedAt @map("updated_at")
+  serviceMappings      ExpertServiceMapping[]
+  businessAddress      Address?               @relation("ExpertBusinessAddress", fields: [businessAddressId], references: [id])
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders               Order[]
+  reviews              Review[]
+  serviceSchedules     ServiceSchedule[]
+  settlements          Settlement[]
+
+  @@index([rating])
+  @@index([serviceRegions])
+  @@index([expertStatus])
+  @@index([businessNumber])
+  @@map("experts")
+}
+
+model Admin {
+  id           String    @id @default(cuid())
+  userId       String    @unique @map("user_id")
+  department   String?
+  position     String?
+  permissions  String[]  @default([])
+  lastActiveAt DateTime? @map("last_active_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([department])
+  @@map("admins")
+}
+
+model Address {
+  id           String     @id @default(cuid())
+  userId       String     @map("user_id")
+  label        String
+  addressLine1 String     @map("address_line1")
+  addressLine2 String?    @map("address_line2")
+  city         String
+  state        String
+  postalCode   String     @map("postal_code")
+  country      String     @default("South Korea")
+  isDefault    Boolean    @default(false) @map("is_default")
+  latitude     Float?
+  longitude    Float?
+  metadata     Json?      @default("{}")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at")
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customers    Customer[] @relation("CustomerDefaultAddress")
+  experts      Expert[]   @relation("ExpertBusinessAddress")
+  orders       Order[]
+
+  @@index([userId])
+  @@index([latitude, longitude])
+  @@index([userId, isDefault])
+  @@map("addresses")
+}
+
+model ServiceCategory {
+  id            String               @id @default(cuid())
+  code          String               @unique
+  name          String               @unique
+  description   String?
+  displayOrder  Int                  @default(0) @map("display_order")
+  isActive      Boolean              @default(true) @map("is_active")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @default(now()) @updatedAt @map("updated_at")
+  subcategories ServiceSubcategory[]
+
+  @@index([displayOrder])
+  @@index([isActive])
+  @@map("service_categories")
+}
+
+model ServiceSubcategory {
+  id                  String        @id @default(cuid())
+  categoryId          String        @map("category_id")
+  code                String
+  name                String
+  description         String?
+  membershipAvailable Boolean       @default(false) @map("membership_available")
+  displayOrder        Int           @default(0) @map("display_order")
+  isActive            Boolean       @default(true) @map("is_active")
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @default(now()) @updatedAt @map("updated_at")
+  category            ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  items               ServiceItem[]
+
+  @@unique([categoryId, code])
+  @@index([membershipAvailable])
+  @@index([isActive])
+  @@index([categoryId])
+  @@map("service_subcategories")
+}
+
+model ServiceItem {
+  id             String                 @id @default(cuid())
+  subcategoryId  String                 @map("subcategory_id")
+  code           String
+  name           String
+  description    String?
+  displayOrder   Int                    @default(0) @map("display_order")
+  isActive       Boolean                @default(true) @map("is_active")
+  createdAt      DateTime               @default(now()) @map("created_at")
+  updatedAt      DateTime               @default(now()) @updatedAt @map("updated_at")
+  subcategory    ServiceSubcategory     @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  expertMappings ExpertServiceMapping[]
+  orders         Order[]
+
+  @@unique([subcategoryId, code])
+  @@index([isActive])
+  @@index([subcategoryId])
+  @@map("service_items")
+}
+
+model ServiceItemPrice {
+  id                  String      @id @default(cuid())
+  serviceItemId       String      @map("service_item_id")
+  basePrice           Float       @map("base_price")
+  unitType            UnitType    @map("unit_type")
+  minPrice            Float?      @map("min_price")
+  vatIncluded         Boolean     @default(true) @map("vat_included")
+  effectiveStartDate  DateTime    @map("effective_start_date")
+  effectiveEndDate    DateTime?   @map("effective_end_date")
+  priceVersion        Int         @default(1) @map("price_version")
+  isActive            Boolean     @default(true) @map("is_active")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  createdById         String      @map("created_by")
+  serviceItem         ServiceItem @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
+  createdBy           User        @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@unique([serviceItemId, effectiveStartDate])
+  @@index([serviceItemId])
+  @@index([effectiveStartDate])
+  @@index([isActive])
+  @@map("service_item_prices")
+}
+
+model OnSiteFeeCategory {
+  id                  String     @id @default(cuid())
+  code                String     @unique
+  name                String
+  description         String?
+  feeType             FeeType    @map("fee_type")
+  baseAmount          Float      @map("base_amount")
+  vatIncluded         Boolean    @default(true) @map("vat_included")
+  settlementIncluded  Boolean    @default(true) @map("settlement_included")
+  isActive            Boolean    @default(true) @map("is_active")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @default(now()) @updatedAt @map("updated_at")
+
+  @@index([code])
+  @@index([isActive])
+  @@map("on_site_fee_categories")
+}
+
+model ServiceCategoryOnSiteFeeMapping {
+  id                    String               @id @default(cuid())
+  serviceCategoryId     String               @map("service_category_id")
+  serviceCategoryType   ServiceCategoryType  @map("service_category_type")
+  onSiteFeeCategoryId   String               @map("on_site_fee_category_id")
+  mappingLevel          MappingLevel         @default(level2) @map("mapping_level")
+  isRequired            Boolean              @default(false) @map("is_required")
+  maxQuantity           Int?                 @map("max_quantity")
+  effectiveStartDate    DateTime             @map("effective_start_date")
+  effectiveEndDate      DateTime?            @map("effective_end_date")
+  mappingVersion        Int                  @default(1) @map("mapping_version")
+  isActive              Boolean              @default(true) @map("is_active")
+  createdAt             DateTime             @default(now()) @map("created_at")
+  createdById           String               @map("created_by")
+  onSiteFeeCategory     OnSiteFeeCategory   @relation(fields: [onSiteFeeCategoryId], references: [id], onDelete: Cascade)
+  createdBy             User                 @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@unique([serviceCategoryId, serviceCategoryType, onSiteFeeCategoryId, effectiveStartDate])
+  @@index([serviceCategoryId, serviceCategoryType])
+  @@index([onSiteFeeCategoryId])
+  @@index([effectiveStartDate])
+  @@index([isActive])
+  @@map("service_category_on_site_fee_mappings")
+}
+
+model ServiceCategoryChannelCommission {
+  id                  String          @id @default(cuid())
+  serviceItemId       String          @map("service_item_id")
+  channelCode         String          @map("channel_code")
+  commissionType      CommissionType  @map("commission_type")
+  commissionValue     Float           @map("commission_value")
+  vatBasis            VatBasis        @default(included) @map("vat_basis")
+  effectiveStartDate  DateTime        @map("effective_start_date")
+  effectiveEndDate    DateTime?       @map("effective_end_date")
+  commissionVersion   Int             @default(1) @map("commission_version")
+  isActive            Boolean         @default(true) @map("is_active")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  createdById         String          @map("created_by")
+  serviceItem         ServiceItem     @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
+  createdBy           User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@unique([serviceItemId, channelCode, effectiveStartDate])
+  @@index([serviceItemId])
+  @@index([channelCode])
+  @@index([effectiveStartDate])
+  @@index([isActive])
+  @@map("service_category_channel_commissions")
+}
+
+model ServiceCategoryExtraField {
+  id                  String              @id @default(cuid())
+  serviceCategoryId   String              @map("service_category_id")
+  serviceCategoryType ServiceCategoryType @map("service_category_type")
+  fieldKey            String              @map("field_key")
+  label               String
+  fieldType           FieldType           @map("field_type")
+  options             Json?               @default("[]")
+  isRequired          Boolean             @default(false) @map("is_required")
+  displayLocation     DisplayLocation     @default(both) @map("display_location")
+  sortOrder           Int                 @default(0) @map("sort_order")
+  isActive            Boolean             @default(true) @map("is_active")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @default(now()) @updatedAt @map("updated_at")
+
+  @@unique([serviceCategoryId, serviceCategoryType, fieldKey])
+  @@index([serviceCategoryId, serviceCategoryType])
+  @@index([fieldKey])
+  @@index([isActive])
+  @@map("service_category_extra_fields")
+}
+
+model OrderExtraFieldValue {
+  id         String   @id @default(cuid())
+  orderId    String   @map("order_id")
+  fieldKey   String   @map("field_key")
+  fieldValue String?  @map("field_value")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, fieldKey])
+  @@index([orderId])
+  @@index([fieldKey])
+  @@map("order_extra_field_values")
+}
+
+model ExpertServiceMapping {
+  id            String      @id @default(cuid())
+  expertId      String      @map("expert_id")
+  serviceItemId String      @map("service_item_id")
+  customPrice   Float?      @map("custom_price")
+  isAvailable   Boolean     @default(true) @map("is_available")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at")
+  expert        Expert      @relation(fields: [expertId], references: [id], onDelete: Cascade)
+  serviceItem   ServiceItem @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
+
+  @@unique([expertId, serviceItemId])
+  @@index([expertId], map: "idx_expert_service_expert_id")
+  @@index([serviceItemId], map: "idx_expert_service_service_id")
+  @@index([isAvailable], map: "idx_expert_service_available")
+  @@map("expert_service_mapping")
+}
+
+model Order {
+  id                 String             @id @default(cuid())
+  orderNumber        String             @unique @map("order_number")
+  customerId         String             @map("customer_id")
+  expertId           String?            @map("expert_id")
+  serviceItemId      String             @map("service_item_id")
+  serviceCategoryCode        String?   @map("service_category_code")
+  serviceSubcategoryCode     String?   @map("service_subcategory_code")
+  serviceItemCode           String?   @map("service_item_code")
+  membershipSubcategoryCode  String?   @map("membership_subcategory_code")
+  addressId          String             @map("address_id")
+  status             OrderStatus        @default(new)
+  paymentStatus      PaymentStatus      @default(pending) @map("payment_status")
+  requestedDate      DateTime           @map("requested_date")
+  confirmedDate      DateTime?          @map("confirmed_date")
+  startedAt          DateTime?          @map("started_at")
+  completedAt        DateTime?          @map("completed_at")
+  cancelledAt        DateTime?          @map("cancelled_at")
+  basePrice          Float              @map("base_price")
+  onsiteCosts        Json?              @default("[]") @map("onsite_costs")
+  discountAmount     Float              @default(0) @map("discount_amount")
+  depositAmount      Float              @map("deposit_amount")
+  totalAmount        Float              @map("total_amount")
+  paidAmount         Float              @default(0) @map("paid_amount")
+  customerNotes      String?            @map("customer_notes")
+  expertNotes        String?            @map("expert_notes")
+  cancellationReason String?            @map("cancellation_reason")
+  metadata           Json?              @default("{}")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @default(now()) @updatedAt @map("updated_at")
+  orderAttachments   OrderAttachment[]
+  orderNotes         OrderNote[]
+  address            Address            @relation(fields: [addressId], references: [id])
+  customer           Customer           @relation(fields: [customerId], references: [id])
+  expert             Expert?            @relation(fields: [expertId], references: [id])
+  serviceItem        ServiceItem        @relation(fields: [serviceItemId], references: [id])
+  payments           Payment[]
+  review             Review?
+  serviceSchedule    ServiceSchedule?
+  settlementDetails  SettlementDetail[]
+
+  @@index([orderNumber], map: "idx_orders_order_number")
+  @@index([customerId], map: "idx_orders_customer_id")
+  @@index([expertId], map: "idx_orders_expert_id")
+  @@index([status], map: "idx_orders_status")
+  @@index([paymentStatus], map: "idx_orders_payment_status")
+  @@index([requestedDate], map: "idx_orders_requested_date")
+  @@index([createdAt], map: "idx_orders_created_at")
+  @@map("orders")
+}
+
+model OrderNote {
+  id         String     @id @default(cuid())
+  orderId    String     @map("order_id")
+  authorId   String     @map("author_id")
+  authorType AuthorType @map("author_type")
+  content    String
+  isInternal Boolean    @default(false) @map("is_internal")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  author     User       @relation(fields: [authorId], references: [id])
+  order      Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId], map: "idx_order_notes_order_id")
+  @@index([createdAt], map: "idx_order_notes_created_at")
+  @@map("order_notes")
+}
+
+model OrderAttachment {
+  id             String          @id @default(cuid())
+  orderId        String          @map("order_id")
+  uploaderId     String          @map("uploader_id")
+  fileName       String          @map("file_name")
+  fileUrl        String          @map("file_url")
+  fileType       String?         @map("file_type")
+  fileSize       Int?            @map("file_size")
+  attachmentType AttachmentType? @map("attachment_type")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  uploader       User            @relation(fields: [uploaderId], references: [id])
+
+  @@index([orderId], map: "idx_order_attachments_order_id")
+  @@index([attachmentType], map: "idx_order_attachments_type")
+  @@map("order_attachments")
+}
+
+model ServiceSchedule {
+  id            String         @id @default(cuid())
+  orderId       String         @unique @map("order_id")
+  expertId      String         @map("expert_id")
+  scheduledDate DateTime       @map("scheduled_date")
+  startTime     String         @map("start_time")
+  endTime       String         @map("end_time")
+  status        ScheduleStatus @default(scheduled)
+  notes         String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @default(now()) @updatedAt @map("updated_at")
+  expert        Expert         @relation(fields: [expertId], references: [id])
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([expertId], map: "idx_service_schedule_expert_id")
+  @@index([scheduledDate], map: "idx_service_schedule_date")
+  @@index([status], map: "idx_service_schedule_status")
+  @@map("service_schedule")
+}
+
+model Payment {
+  id              String                   @id @default(cuid())
+  orderId         String                   @map("order_id")
+  paymentNumber   String                   @unique @map("payment_number")
+  paymentType     PaymentType              @map("payment_type")
+  method          PaymentMethod?
+  amount          Float
+  status          PaymentTransactionStatus @default(pending)
+  pgProvider      String?                  @map("pg_provider")
+  pgTransactionId String?                  @map("pg_transaction_id")
+  pgResponse      Json?                    @map("pg_response")
+  paidAt          DateTime?                @map("paid_at")
+  refundedAt      DateTime?                @map("refunded_at")
+  refundAmount    Float                    @default(0) @map("refund_amount")
+  refundReason    String?                  @map("refund_reason")
+  metadata        Json?                    @default("{}")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+  updatedAt       DateTime                 @default(now()) @updatedAt @map("updated_at")
+  order           Order                    @relation(fields: [orderId], references: [id])
+
+  @@index([orderId], map: "idx_payments_order_id")
+  @@index([paymentNumber], map: "idx_payments_payment_number")
+  @@index([status], map: "idx_payments_status")
+  @@index([paidAt], map: "idx_payments_paid_at")
+  @@map("payments")
+}
+
+model Settlement {
+  id                String             @id @default(cuid())
+  expertId          String             @map("expert_id")
+  settlementNumber  String             @unique @map("settlement_number")
+  periodStart       DateTime           @map("period_start")
+  periodEnd         DateTime           @map("period_end")
+  totalOrders       Int                @default(0) @map("total_orders")
+  totalRevenue      Float              @default(0) @map("total_revenue")
+  platformFee       Float              @default(0) @map("platform_fee")
+  paymentFee        Float              @default(0) @map("payment_fee")
+  taxAmount         Float              @default(0) @map("tax_amount")
+  netAmount         Float              @default(0) @map("net_amount")
+  status            SettlementStatus   @default(pending)
+  approvedAt        DateTime?          @map("approved_at")
+  paidAt            DateTime?          @map("paid_at")
+  bankName          String?            @map("bank_name")
+  accountNumber     String?            @map("account_number")
+  accountHolder     String?            @map("account_holder")
+  notes             String?
+  metadata          Json?              @default("{}")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @default(now()) @updatedAt @map("updated_at")
+  settlementDetails SettlementDetail[]
+  expert            Expert             @relation(fields: [expertId], references: [id])
+
+  @@index([expertId], map: "idx_settlements_expert_id")
+  @@index([periodStart, periodEnd], map: "idx_settlements_period")
+  @@index([status], map: "idx_settlements_status")
+  @@index([paidAt], map: "idx_settlements_paid_at")
+  @@map("settlements")
+}
+
+model SettlementDetail {
+  id           String     @id @default(cuid())
+  settlementId String     @map("settlement_id")
+  orderId      String     @map("order_id")
+  orderAmount  Float      @map("order_amount")
+  platformFee  Float      @map("platform_fee")
+  paymentFee   Float      @map("payment_fee")
+  netAmount    Float      @map("net_amount")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  order        Order      @relation(fields: [orderId], references: [id])
+  settlement   Settlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  @@index([settlementId], map: "idx_settlement_details_settlement_id")
+  @@index([orderId], map: "idx_settlement_details_order_id")
+  @@map("settlement_details")
+}
+
+model Review {
+  id           String    @id @default(cuid())
+  orderId      String    @unique @map("order_id")
+  customerId   String    @map("customer_id")
+  expertId     String    @map("expert_id")
+  rating       Int
+  title        String?
+  content      String
+  images       String[]  @default([])
+  isVerified   Boolean   @default(true) @map("is_verified")
+  isApproved   Boolean   @default(false) @map("is_approved")
+  approvedAt   DateTime? @map("approved_at")
+  helpfulCount Int       @default(0) @map("helpful_count")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
+  customer     Customer  @relation(fields: [customerId], references: [id])
+  expert       Expert    @relation(fields: [expertId], references: [id])
+  order        Order     @relation(fields: [orderId], references: [id])
+
+  @@index([expertId], map: "idx_reviews_expert_id")
+  @@index([customerId], map: "idx_reviews_customer_id")
+  @@index([rating], map: "idx_reviews_rating")
+  @@index([isApproved], map: "idx_reviews_is_approved")
+  @@index([createdAt], map: "idx_reviews_created_at")
+  @@map("reviews")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  type      String
+  title     String
+  message   String
+  data      Json?     @default("{}")
+  isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_notifications_user_id")
+  @@index([userId, isRead], map: "idx_notifications_is_read")
+  @@index([createdAt], map: "idx_notifications_created_at")
+  @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?  @map("user_id")
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String?  @map("entity_id")
+  oldValues  Json?    @map("old_values")
+  newValues  Json?    @map("new_values")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "idx_audit_logs_user_id")
+  @@index([entityType, entityId], map: "idx_audit_logs_entity")
+  @@index([createdAt], map: "idx_audit_logs_created_at")
+  @@map("audit_logs")
+}
+
+enum UserRole {
+  customer
+  expert
+  admin
+}
+
+enum UserStatus {
+  active
+  inactive
+  pending
+  suspended
+}
+
+enum BusinessType {
+  individual
+  corporate
+}
+
+enum ExpertStatus {
+  active
+  inactive
+  busy
+  vacation
+}
+
+enum OrderStatus {
+  new
+  consult_required
+  schedule_pending
+  schedule_confirmed
+  in_progress
+  payment_pending
+  paid
+  as_requested
+  cancelled
+}
+
+enum PaymentStatus {
+  pending
+  deposit_paid
+  balance_pending
+  balance_paid
+  refunded
+}
+
+enum AuthorType {
+  customer
+  expert
+  admin
+}
+
+enum AttachmentType {
+  before
+  after
+  receipt
+  other
+}
+
+enum ScheduleStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+}
+
+enum PaymentType {
+  deposit
+  balance
+  full
+}
+
+enum PaymentMethod {
+  credit_card
+  virtual_account
+  simple_payment
+  cash
+}
+
+enum PaymentTransactionStatus {
+  pending
+  completed
+  failed
+  cancelled
+  refunded
+}
+
+enum SettlementStatus {
+  pending
+  approved
+  paid
+  cancelled
+}
+
+enum UnitType {
+  ea
+  area
+  time
+  meter
+  set
+}
+
+enum FeeType {
+  fixed
+  unit_based
+}
+
+enum ServiceCategoryType {
+  subcategory
+  item
+}
+
+enum MappingLevel {
+  level2
+  level3
+}
+
+enum FieldType {
+  text
+  number
+  date
+  select
+  checkbox
+  radio
+}
+
+enum DisplayLocation {
+  order_backoffice_only
+  expert_app_only
+  both
+}
+
+enum CommissionType {
+  rate
+  fixed
+}
+
+enum VatBasis {
+  included
+  excluded
+}
