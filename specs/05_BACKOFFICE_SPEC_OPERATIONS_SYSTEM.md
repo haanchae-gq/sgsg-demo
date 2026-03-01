@@ -13,7 +13,7 @@
 - **지급 방식**: 계좌이체 (전문가 등록 통장으로 자동 이체)
 
 ### 정산 목록 페이지 (Ant Design Table + 통계)
-- **필터**: 상태(대기/승인/지급완료), 기간, 전문가명
+- **필터**: 상태(대기/승인/지급완료), 기간, 전문가명, 채널(채널명, 채널 타입)
 - **통계 요약**: 총 정산액, 총 수수료, 총 순수익, 평균 정산액
 - **일괄 작업**: 선택 정산 승인, 명세서 다운로드
 
@@ -42,11 +42,12 @@
 2. **주문 상태 비율**: 도넛 차트 (신규, 진행중, 완료, 취소, 환불 비율)
 3. **인기 서비스 TOP 5**: 막대 그래프 (서비스별 주문 수)
 4. **사용자 가입 추이**: 영역 그래프 (일별 신규 사용자)
+5. **필터 옵션**: 기간, 채널(전체/특정 채널), 서비스 카테고리
 
 ### 고급 분석 페이지 (Ant Design Pro 분석 템플릿)
 - **기간 선택**: Ant Design DatePicker.RangePicker
 - **비교 기능**: 전월/전년 동기 대비 성장률 계산
-- **다차원 분석**: 지역별, 서비스별, 전문가 등급별 분석
+- **다차원 분석**: 지역별, 서비스별, 전문가 등급별, 채널별 분석
 - **실시간 데이터**: WebSocket으로 실시간 데이터 업데이트 (선택 사항)
 
 ### 리포트 다운로드
@@ -55,11 +56,11 @@
 - **일정 리포트**: 매일/매주/매월 자동 리포트 이메일 발송 (Node.js 크론잡)
 
 ### 주요 리포트 유형
-1. **매출 리포트**: 일별/주별/월별 매출, 수수료, 순이익
-2. **주문 리포트**: 주문 수, 완료율, 취소율, 평균 결제 금액
+1. **매출 리포트**: 일별/주별/월별 매출, 수수료, 순이익 (채널별 필터링 가능)
+2. **주문 리포트**: 주문 수, 완료율, 취소율, 평균 결제 금액 (채널별 필터링 가능)
 3. **사용자 리포트**: 신규 가입, 활성 사용자, 이탈률
 4. **전문가 리포트**: 정산 내역, 수익률, 서비스 품질 평가
-5. **서비스 리포트**: 인기 서비스, 수익성 분석, 지역별 수요
+5. **서비스 리포트**: 인기 서비스, 수익성 분석, 지역별 수요 (채널별 필터링 가능)
 
 ---
 
@@ -150,7 +151,7 @@
 - `GET /api/v1/admin/orders` - 주문 목록 (고급 필터)
 - `GET /api/v1/admin/orders/:id` - 주문 상세 정보
 - `PUT /api/v1/admin/orders/:id/status` - 주문 상태 변경
-- `POST /api/v1/admin/orders/:id/reassign` - 전문가 재배정
+- `POST /api/v1/admin/orders/:id/reassign` - 전문가 재배정 (기존 주문의 channel_id, channel_type 정보 유지, 배정 엔진에 전달)
 - `POST /api/v1/admin/orders/:id/refund` - 환불 처리
 - `GET /api/v1/admin/orders/:id/timeline` - 주문 타임라인
 - `GET /api/v1/admin/orders/:id/chat-logs` - 채팅 내역
@@ -172,12 +173,26 @@
 - `GET /api/v1/admin/settlements/:id/statement` - 정산 명세서 PDF
 
 ### 통계 API
-- `GET /api/v1/admin/statistics/sales` - 매출 통계 (기간별)
-- `GET /api/v1/admin/statistics/orders` - 주문 통계
-- `GET /api/v1/admin/statistics/users` - 사용자 통계
-- `GET /api/v1/admin/statistics/top-services` - 인기 서비스 TOP 5
-- `GET /api/v1/admin/statistics/export` - 리포트 데이터 내보내기
 
+- `GET /api/v1/admin/statistics/sales` - 매출 통계 (기간별)
+  - **쿼리 파라미터**: `from_date`, `to_date`, `channel_id` (선택), `channel_type` (선택), `service_category_mid` (선택)
+  - **설명**: 지정된 기간 동안의 매출 통계를 반환합니다. 채널별 필터링이 가능합니다.
+
+- `GET /api/v1/admin/statistics/orders` - 주문 통계
+  - **쿼리 파라미터**: `from_date`, `to_date`, `channel_id` (선택), `channel_type` (선택), `order_status` (선택)
+  - **설명**: 지정된 기간 동안의 주문 통계(주문 수, 완료율, 취소율 등)를 반환합니다. 채널별 필터링이 가능합니다.
+
+- `GET /api/v1/admin/statistics/users` - 사용자 통계
+  - **쿼리 파라미터**: `from_date`, `to_date`, `channel_id` (선택)
+  - **설명**: 지정된 기간 동안의 사용자 통계(신규 가입, 활성 사용자 등)를 반환합니다. 채널별 사용자 통계도 지원합니다.
+
+- `GET /api/v1/admin/statistics/top-services` - 인기 서비스 TOP 5
+  - **쿼리 파라미터**: `from_date`, `to_date`, `channel_id` (선택)
+  - **설명**: 지정된 기간 동안 가장 인기 있는 서비스 TOP 5를 반환합니다. 채널별 인기 서비스 분석이 가능합니다.
+
+- `GET /api/v1/admin/statistics/export` - 리포트 데이터 내보내기
+  - **쿼리 파라미터**: `report_type` (sales/orders/users/services), `from_date`, `to_date`, `channel_id` (선택), `channel_type` (선택), `format` (excel/pdf)
+  - **설명**: 지정된 리포트 유형의 데이터를 Excel 또는 PDF 형식으로 내보냅니다. 채널별 리포트 생성이 가능합니다.
 ### 시스템 설정 API
 - `GET /api/v1/admin/settings` - 시스템 설정 조회
 - `PUT /api/v1/admin/settings` - 시스템 설정 업데이트

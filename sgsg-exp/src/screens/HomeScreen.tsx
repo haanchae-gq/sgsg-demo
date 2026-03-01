@@ -1,13 +1,13 @@
 import React from 'react';
 import { NavBar, Grid, Card, Button } from 'antd-mobile';
-import { MailOutline, CalendarOutline, CheckCircleOutline, WalletOutline } from 'antd-mobile-icons';
+import { MailOutline, CalendarOutline, CheckCircleOutline, BankcardOutline } from 'antd-mobile-icons';
 
 const HomeScreen: React.FC = () => {
   const features = [
     { icon: <MailOutline />, title: 'Orders', count: '5 new' },
     { icon: <CalendarOutline />, title: 'Schedule', count: '3 today' },
     { icon: <CheckCircleOutline />, title: 'Completed', count: '24 this week' },
-    { icon: <WalletOutline />, title: 'Earnings', count: '₩1,240,000' },
+    { icon: <BankcardOutline />, title: 'Earnings', count: '₩1,240,000' },
   ];
 
   return (

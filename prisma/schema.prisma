@@ -1,36 +1,42 @@
 generator client {
   provider = "prisma-client-js"
+  output = "../sgsg-api/node_modules/.prisma/client"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DB_URL")
 }
 
 model User {
-  id                  String            @id @default(cuid())
-  email               String            @unique
-  phone               String            @unique
-  passwordHash        String            @map("password_hash")
-  name                String
-  role                UserRole
-  status              UserStatus        @default(active)
-  avatarUrl           String?           @map("avatar_url")
-  emailVerified       Boolean           @default(false) @map("email_verified")
-  phoneVerified       Boolean           @default(false) @map("phone_verified")
-  lastLoginAt         DateTime?         @map("last_login_at")
-  metadata            Json?             @default("{}")
-  createdAt           DateTime          @default(now()) @map("created_at")
-  updatedAt           DateTime          @default(now()) @updatedAt @map("updated_at")
-  deletedAt           DateTime?         @map("deleted_at")
-  addresses           Address[]
-  admin               Admin?
-  auditLogs           AuditLog[]
-  customer            Customer?
-  expert              Expert?
-  notifications       Notification[]
-  uploadedAttachments OrderAttachment[]
-  orderNotes          OrderNote[]
+  id                               String                             @id @default(cuid())
+  email                            String                             @unique
+  phone                            String                             @unique
+  passwordHash                     String                             @map("password_hash")
+  name                             String
+  role                             UserRole
+  status                           UserStatus                         @default(active)
+  avatarUrl                        String?                            @map("avatar_url")
+  emailVerified                    Boolean                            @default(false) @map("email_verified")
+  phoneVerified                    Boolean                            @default(false) @map("phone_verified")
+  lastLoginAt                      DateTime?                          @map("last_login_at")
+  metadata                         Json?                              @default("{}")
+  createdAt                        DateTime                           @default(now()) @map("created_at")
+  updatedAt                        DateTime                           @default(now()) @updatedAt @map("updated_at")
+  deletedAt                        DateTime?                          @map("deleted_at")
+  addresses                        Address[]
+  admin                            Admin?
+  auditLogs                        AuditLog[]
+  customer                         Customer?
+  expert                           Expert?
+  notifications                    Notification[]
+  uploadedAttachments              OrderAttachment[]
+  orderNotes                       OrderNote[]
+  ServiceItemPrice                 ServiceItemPrice[]
+  ServiceCategoryOnSiteFeeMapping  ServiceCategoryOnSiteFeeMapping[]
+  ServiceCategoryChannelCommission ServiceCategoryChannelCommission[]
+  subAccount                      SubAccount?                         @relation("SubAccountUser")
+  channelsCreated                  Channel[]                           @relation("ChannelCreatedBy")
+  channelsUpdated                  Channel[]                           @relation("ChannelUpdatedBy")
 
   @@index([email])
   @@index([phone])
@@ -71,7 +77,7 @@ model Expert {
   rating               Float?                 @default(0)
   totalCompletedOrders Int                    @default(0) @map("total_completed_orders")
   totalEarnings        Float                  @default(0) @map("total_earnings")
-  expertStatus         ExpertStatus           @default(active) @map("expert_status")
+  operationalStatus    ExpertStatus           @default(active) @map("expert_status")
   bankName             String?                @map("bank_name")
   accountNumber        String?                @map("account_number")
   accountHolder        String?                @map("account_holder")
@@ -79,6 +85,12 @@ model Expert {
   certificateUrls      String[]               @default([]) @map("certificate_urls")
   portfolioImages      String[]               @default([]) @map("portfolio_images")
   metadata             Json?                  @default("{}")
+  approvalStatus       ExpertApprovalStatus   @default(PENDING) @map("approval_status")
+  activeStatus         ExpertActiveStatus     @default(INACTIVE) @map("active_status")
+  membershipEnabled    Boolean                @default(false) @map("membership_enabled")
+  membershipSlotCount  Int                    @default(0) @map("membership_slot_count")
+  serviceCategoryMidAvailableList String[]    @default([]) @map("service_category_mid_available_list")
+  regionGroups         String[]               @default([]) @map("region_groups")
   createdAt            DateTime               @default(now()) @map("created_at")
   updatedAt            DateTime               @default(now()) @updatedAt @map("updated_at")
   serviceMappings      ExpertServiceMapping[]
@@ -88,10 +100,15 @@ model Expert {
   reviews              Review[]
   serviceSchedules     ServiceSchedule[]
   settlements          Settlement[]
+  subAccounts          SubAccount[]
+  masterMemberships    MasterMembership[]
+  penaltyHistories     PenaltyHistory[]
+  assignmentHistoriesAsMaster AssignmentHistory[] @relation("AssignedMaster")
+  masterAssignmentPolicies MasterAssignmentPolicy[]
 
   @@index([rating])
   @@index([serviceRegions])
-  @@index([expertStatus])
+  @@index([operationalStatus])
   @@index([businessNumber])
   @@map("experts")
 }
@@ -106,7 +123,7 @@ model Admin {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  penaltyHistoriesApplied PenaltyHistory[] @relation("PenaltyHistoryAdmin")
   @@index([department])
   @@map("admins")
 }
@@ -155,16 +172,16 @@ model ServiceCategory {
 }
 
 model ServiceSubcategory {
-  id                  String        @id @default(cuid())
-  categoryId          String        @map("category_id")
+  id                  String          @id @default(cuid())
+  categoryId          String          @map("category_id")
   code                String
   name                String
   description         String?
-  membershipAvailable Boolean       @default(false) @map("membership_available")
-  displayOrder        Int           @default(0) @map("display_order")
-  isActive            Boolean       @default(true) @map("is_active")
-  createdAt           DateTime      @default(now()) @map("created_at")
-  updatedAt           DateTime      @default(now()) @updatedAt @map("updated_at")
+  membershipAvailable Boolean         @default(false) @map("membership_available")
+  displayOrder        Int             @default(0) @map("display_order")
+  isActive            Boolean         @default(true) @map("is_active")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @default(now()) @updatedAt @map("updated_at")
   category            ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   items               ServiceItem[]
 
@@ -176,18 +193,20 @@ model ServiceSubcategory {
 }
 
 model ServiceItem {
-  id             String                 @id @default(cuid())
-  subcategoryId  String                 @map("subcategory_id")
-  code           String
-  name           String
-  description    String?
-  displayOrder   Int                    @default(0) @map("display_order")
-  isActive       Boolean                @default(true) @map("is_active")
-  createdAt      DateTime               @default(now()) @map("created_at")
-  updatedAt      DateTime               @default(now()) @updatedAt @map("updated_at")
-  subcategory    ServiceSubcategory     @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
-  expertMappings ExpertServiceMapping[]
-  orders         Order[]
+  id                               String                             @id @default(cuid())
+  subcategoryId                    String                             @map("subcategory_id")
+  code                             String
+  name                             String
+  description                      String?
+  displayOrder                     Int                                @default(0) @map("display_order")
+  isActive                         Boolean                            @default(true) @map("is_active")
+  createdAt                        DateTime                           @default(now()) @map("created_at")
+  updatedAt                        DateTime                           @default(now()) @updatedAt @map("updated_at")
+  subcategory                      ServiceSubcategory                 @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  expertMappings                   ExpertServiceMapping[]
+  orders                           Order[]
+  ServiceItemPrice                 ServiceItemPrice[]
+  ServiceCategoryChannelCommission ServiceCategoryChannelCommission[]
 
   @@unique([subcategoryId, code])
   @@index([isActive])
@@ -196,20 +215,20 @@ model ServiceItem {
 }
 
 model ServiceItemPrice {
-  id                  String      @id @default(cuid())
-  serviceItemId       String      @map("service_item_id")
-  basePrice           Float       @map("base_price")
-  unitType            UnitType    @map("unit_type")
-  minPrice            Float?      @map("min_price")
-  vatIncluded         Boolean     @default(true) @map("vat_included")
-  effectiveStartDate  DateTime    @map("effective_start_date")
-  effectiveEndDate    DateTime?   @map("effective_end_date")
-  priceVersion        Int         @default(1) @map("price_version")
-  isActive            Boolean     @default(true) @map("is_active")
-  createdAt           DateTime    @default(now()) @map("created_at")
-  createdById         String      @map("created_by")
-  serviceItem         ServiceItem @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
-  createdBy           User        @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  id                 String      @id @default(cuid())
+  serviceItemId      String      @map("service_item_id")
+  basePrice          Float       @map("base_price")
+  unitType           UnitType    @map("unit_type")
+  minPrice           Float?      @map("min_price")
+  vatIncluded        Boolean     @default(true) @map("vat_included")
+  effectiveStartDate DateTime    @map("effective_start_date")
+  effectiveEndDate   DateTime?   @map("effective_end_date")
+  priceVersion       Int         @default(1) @map("price_version")
+  isActive           Boolean     @default(true) @map("is_active")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  createdById        String      @map("created_by")
+  serviceItem        ServiceItem @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
+  createdBy          User        @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@unique([serviceItemId, effectiveStartDate])
   @@index([serviceItemId])
@@ -219,17 +238,18 @@ model ServiceItemPrice {
 }
 
 model OnSiteFeeCategory {
-  id                  String     @id @default(cuid())
-  code                String     @unique
-  name                String
-  description         String?
-  feeType             FeeType    @map("fee_type")
-  baseAmount          Float      @map("base_amount")
-  vatIncluded         Boolean    @default(true) @map("vat_included")
-  settlementIncluded  Boolean    @default(true) @map("settlement_included")
-  isActive            Boolean    @default(true) @map("is_active")
-  createdAt           DateTime   @default(now()) @map("created_at")
-  updatedAt           DateTime   @default(now()) @updatedAt @map("updated_at")
+  id                              String                            @id @default(cuid())
+  code                            String                            @unique
+  name                            String
+  description                     String?
+  feeType                         FeeType                           @map("fee_type")
+  baseAmount                      Float                             @map("base_amount")
+  vatIncluded                     Boolean                           @default(true) @map("vat_included")
+  settlementIncluded              Boolean                           @default(true) @map("settlement_included")
+  isActive                        Boolean                           @default(true) @map("is_active")
+  createdAt                       DateTime                          @default(now()) @map("created_at")
+  updatedAt                       DateTime                          @default(now()) @updatedAt @map("updated_at")
+  ServiceCategoryOnSiteFeeMapping ServiceCategoryOnSiteFeeMapping[]
 
   @@index([code])
   @@index([isActive])
@@ -237,21 +257,21 @@ model OnSiteFeeCategory {
 }
 
 model ServiceCategoryOnSiteFeeMapping {
-  id                    String               @id @default(cuid())
-  serviceCategoryId     String               @map("service_category_id")
-  serviceCategoryType   ServiceCategoryType  @map("service_category_type")
-  onSiteFeeCategoryId   String               @map("on_site_fee_category_id")
-  mappingLevel          MappingLevel         @default(level2) @map("mapping_level")
-  isRequired            Boolean              @default(false) @map("is_required")
-  maxQuantity           Int?                 @map("max_quantity")
-  effectiveStartDate    DateTime             @map("effective_start_date")
-  effectiveEndDate      DateTime?            @map("effective_end_date")
-  mappingVersion        Int                  @default(1) @map("mapping_version")
-  isActive              Boolean              @default(true) @map("is_active")
-  createdAt             DateTime             @default(now()) @map("created_at")
-  createdById           String               @map("created_by")
-  onSiteFeeCategory     OnSiteFeeCategory   @relation(fields: [onSiteFeeCategoryId], references: [id], onDelete: Cascade)
-  createdBy             User                 @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  id                  String              @id @default(cuid())
+  serviceCategoryId   String              @map("service_category_id")
+  serviceCategoryType ServiceCategoryType @map("service_category_type")
+  onSiteFeeCategoryId String              @map("on_site_fee_category_id")
+  mappingLevel        MappingLevel        @default(level2) @map("mapping_level")
+  isRequired          Boolean             @default(false) @map("is_required")
+  maxQuantity         Int?                @map("max_quantity")
+  effectiveStartDate  DateTime            @map("effective_start_date")
+  effectiveEndDate    DateTime?           @map("effective_end_date")
+  mappingVersion      Int                 @default(1) @map("mapping_version")
+  isActive            Boolean             @default(true) @map("is_active")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  createdById         String              @map("created_by")
+  onSiteFeeCategory   OnSiteFeeCategory   @relation(fields: [onSiteFeeCategoryId], references: [id], onDelete: Cascade)
+  createdBy           User                @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@unique([serviceCategoryId, serviceCategoryType, onSiteFeeCategoryId, effectiveStartDate])
   @@index([serviceCategoryId, serviceCategoryType])
@@ -262,20 +282,21 @@ model ServiceCategoryOnSiteFeeMapping {
 }
 
 model ServiceCategoryChannelCommission {
-  id                  String          @id @default(cuid())
-  serviceItemId       String          @map("service_item_id")
-  channelCode         String          @map("channel_code")
-  commissionType      CommissionType  @map("commission_type")
-  commissionValue     Float           @map("commission_value")
-  vatBasis            VatBasis        @default(included) @map("vat_basis")
-  effectiveStartDate  DateTime        @map("effective_start_date")
-  effectiveEndDate    DateTime?       @map("effective_end_date")
-  commissionVersion   Int             @default(1) @map("commission_version")
-  isActive            Boolean         @default(true) @map("is_active")
-  createdAt           DateTime        @default(now()) @map("created_at")
-  createdById         String          @map("created_by")
-  serviceItem         ServiceItem     @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
-  createdBy           User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  id                 String         @id @default(cuid())
+  serviceItemId      String         @map("service_item_id")
+  channelCode        String         @map("channel_code")
+  channel           Channel           @relation("ChannelCommission", fields: [channelCode], references: [channelCode])
+  commissionType     CommissionType @map("commission_type")
+  commissionValue    Float          @map("commission_value")
+  vatBasis           VatBasis       @default(included) @map("vat_basis")
+  effectiveStartDate DateTime       @map("effective_start_date")
+  effectiveEndDate   DateTime?      @map("effective_end_date")
+  commissionVersion  Int            @default(1) @map("commission_version")
+  isActive           Boolean        @default(true) @map("is_active")
+  createdAt          DateTime       @default(now()) @map("created_at")
+  createdById        String         @map("created_by")
+  serviceItem        ServiceItem    @relation(fields: [serviceItemId], references: [id], onDelete: Cascade)
+  createdBy          User           @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@unique([serviceItemId, channelCode, effectiveStartDate])
   @@index([serviceItemId])
@@ -341,46 +362,47 @@ model ExpertServiceMapping {
 }
 
 model Order {
-  id                 String             @id @default(cuid())
-  orderNumber        String             @unique @map("order_number")
-  customerId         String             @map("customer_id")
-  expertId           String?            @map("expert_id")
-  serviceItemId      String             @map("service_item_id")
-  serviceCategoryCode        String?   @map("service_category_code")
-  serviceSubcategoryCode     String?   @map("service_subcategory_code")
-  serviceItemCode           String?   @map("service_item_code")
-  membershipSubcategoryCode  String?   @map("membership_subcategory_code")
-  addressId          String             @map("address_id")
-  status             OrderStatus        @default(new)
-  paymentStatus      PaymentStatus      @default(pending) @map("payment_status")
-  requestedDate      DateTime           @map("requested_date")
-  confirmedDate      DateTime?          @map("confirmed_date")
-  startedAt          DateTime?          @map("started_at")
-  completedAt        DateTime?          @map("completed_at")
-  cancelledAt        DateTime?          @map("cancelled_at")
-  basePrice          Float              @map("base_price")
-  onsiteCosts        Json?              @default("[]") @map("onsite_costs")
-  discountAmount     Float              @default(0) @map("discount_amount")
-  depositAmount      Float              @map("deposit_amount")
-  totalAmount        Float              @map("total_amount")
-  paidAmount         Float              @default(0) @map("paid_amount")
-  customerNotes      String?            @map("customer_notes")
-  expertNotes        String?            @map("expert_notes")
-  cancellationReason String?            @map("cancellation_reason")
-  metadata           Json?              @default("{}")
-  createdAt          DateTime           @default(now()) @map("created_at")
-  updatedAt          DateTime           @default(now()) @updatedAt @map("updated_at")
-  orderAttachments   OrderAttachment[]
-  orderNotes         OrderNote[]
-  address            Address            @relation(fields: [addressId], references: [id])
-  customer           Customer           @relation(fields: [customerId], references: [id])
-  expert             Expert?            @relation(fields: [expertId], references: [id])
-  serviceItem        ServiceItem        @relation(fields: [serviceItemId], references: [id])
-  payments           Payment[]
-  review             Review?
-  serviceSchedule    ServiceSchedule?
-  settlementDetails  SettlementDetail[]
-
+  id                        String                 @id @default(cuid())
+  orderNumber               String                 @unique @map("order_number")
+  customerId                String                 @map("customer_id")
+  expertId                  String?                @map("expert_id")
+  serviceItemId             String                 @map("service_item_id")
+  serviceCategoryCode       String?                @map("service_category_code")
+  serviceSubcategoryCode    String?                @map("service_subcategory_code")
+  serviceItemCode           String?                @map("service_item_code")
+  membershipSubcategoryCode String?                @map("membership_subcategory_code")
+  addressId                 String                 @map("address_id")
+  status                    OrderStatus            @default(new)
+  paymentStatus             PaymentStatus          @default(pending) @map("payment_status")
+  requestedDate             DateTime               @map("requested_date")
+  confirmedDate             DateTime?              @map("confirmed_date")
+  startedAt                 DateTime?              @map("started_at")
+  completedAt               DateTime?              @map("completed_at")
+  cancelledAt               DateTime?              @map("cancelled_at")
+  basePrice                 Float                  @map("base_price")
+  onsiteCosts               Json?                  @default("[]") @map("onsite_costs")
+  discountAmount            Float                  @default(0) @map("discount_amount")
+  depositAmount             Float                  @map("deposit_amount")
+  totalAmount               Float                  @map("total_amount")
+  paidAmount                Float                  @default(0) @map("paid_amount")
+  customerNotes             String?                @map("customer_notes")
+  expertNotes               String?                @map("expert_notes")
+  cancellationReason        String?                @map("cancellation_reason")
+  metadata                  Json?                  @default("{}")
+  createdAt                 DateTime               @default(now()) @map("created_at")
+  updatedAt                 DateTime               @default(now()) @updatedAt @map("updated_at")
+  orderAttachments          OrderAttachment[]
+  orderNotes                OrderNote[]
+  address                   Address                @relation(fields: [addressId], references: [id])
+  customer                  Customer               @relation(fields: [customerId], references: [id])
+  expert                    Expert?                @relation(fields: [expertId], references: [id])
+  serviceItem               ServiceItem            @relation(fields: [serviceItemId], references: [id])
+  payments                  Payment[]
+  review                    Review?
+  serviceSchedule           ServiceSchedule?
+  settlementDetails         SettlementDetail[]
+  OrderExtraFieldValue      OrderExtraFieldValue[]
+  assignmentHistories       AssignmentHistory[] @relation("AssignmentHistoryOrder")
   @@index([orderNumber], map: "idx_orders_order_number")
   @@index([customerId], map: "idx_orders_customer_id")
   @@index([expertId], map: "idx_orders_expert_id")
@@ -585,6 +607,172 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model Channel {
+  id                   String                               @id @default(cuid())
+  channelCode          String                               @unique @map("channel_code")
+  channelName          String                               @unique @map("channel_name")
+  channelType          ChannelType                          @map("channel_type")
+  channelStatus        ChannelStatus                        @default(ACTIVE) @map("channel_status")
+  partnerCompanyName   String?                              @map("partner_company_name")
+  partnerContactName   String?                              @map("partner_contact_name")
+  partnerContactEmail  String?                              @map("partner_contact_email")
+  partnerContactPhone  String?                              @map("partner_contact_phone")
+  note                 String?                              @map("note")
+  sortOrder            Int                                  @default(0) @map("sort_order")
+  createdAt            DateTime                             @default(now()) @map("created_at")
+  updatedAt            DateTime                             @default(now()) @updatedAt @map("updated_at")
+  createdBy            String                               @map("created_by")
+  updatedBy            String?                              @map("updated_by")
+  
+  // Relations
+  creator              User                                 @relation("ChannelCreatedBy", fields: [createdBy], references: [id])
+  updater              User?                                @relation("ChannelUpdatedBy", fields: [updatedBy], references: [id])
+  serviceCategoryChannelCommissions ServiceCategoryChannelCommission[] @relation("ChannelCommission")
+  
+  @@index([channelCode])
+  @@index([channelName])
+  @@index([channelType])
+  @@index([channelStatus])
+  @@index([createdAt])
+  @@map("channels")
+}
+
+model RegionGroup {
+  id          String   @id @default(cuid())
+  regionCode  String   @unique @map("region_code")
+  regionGroup String   @map("region_group")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
+  
+  @@index([regionCode])
+  @@index([regionGroup])
+  @@index([isActive])
+  @@map("region_groups")
+}
+
+model SubAccount {
+  id                String               @id @default(cuid())
+  masterAccountId   String               @map("master_account_id")
+  userId            String               @unique @map("user_id")
+  accountType       AccountType          @default(SUB)
+  approvalStatus    ExpertApprovalStatus @default(APPROVED)
+  activeStatus      ExpertActiveStatus   @default(ACTIVE)
+  permissions       String[]             @default([])
+  assignedWorkerId  String?              @map("assigned_worker_id")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @default(now()) @updatedAt @map("updated_at")
+  
+  // Relations
+  masterAccount     Expert               @relation(fields: [masterAccountId], references: [id])
+  user              User                 @relation("SubAccountUser", fields: [userId], references: [id])
+  assignmentHistoriesAsWorker AssignmentHistory[] @relation("AssignedWorker")
+  
+  @@index([masterAccountId])
+  @@index([userId])
+  @@index([accountType])
+  @@index([approvalStatus])
+  @@index([activeStatus])
+  @@map("sub_accounts")
+}
+
+model MasterMembership {
+  id                      String           @id @default(cuid())
+  masterAccountId         String           @unique @map("master_account_id")
+  membershipEnabled       Boolean          @default(true) @map("membership_enabled")
+  membershipStatus        MembershipStatus @default(ACTIVE)
+  membershipSlotCount     Int              @default(1) @map("membership_slot_count")
+  membershipMidList       String[]         @default([]) @map("membership_mid_list")
+  membershipRegionGroups  String[]         @default([]) @map("membership_region_groups")
+  startDate               DateTime         @map("start_date")
+  endDate                 DateTime?        @map("end_date")
+  createdAt               DateTime         @default(now()) @map("created_at")
+  updatedAt               DateTime         @default(now()) @updatedAt @map("updated_at")
+  
+  // Relations
+  masterAccount           Expert           @relation(fields: [masterAccountId], references: [id])
+  
+  @@index([masterAccountId])
+  @@index([membershipStatus])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("master_membership")
+}
+
+model PenaltyHistory {
+  id                String            @id @default(cuid())
+  masterAccountId   String            @map("master_account_id")
+  penaltyType       PenaltyType
+  penaltyStatus     PenaltyStatus     @default(ACTIVE)
+  reasonCode        PenaltyReasonCode
+  reasonDetail      String?           @map("reason_detail")
+  appliedByAdminId  String            @map("applied_by_admin_id")
+  targetMidList     String[]          @default([]) @map("target_mid_list")
+  targetRegionGroups String[]         @default([]) @map("target_region_groups")
+  startDate         DateTime          @map("start_date")
+  endDate           DateTime?         @map("end_date")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  
+  // Relations
+  masterAccount     Expert            @relation(fields: [masterAccountId], references: [id])
+  appliedByAdmin    Admin             @relation("PenaltyHistoryAdmin", fields: [appliedByAdminId], references: [id])
+  
+  @@index([masterAccountId])
+  @@index([penaltyStatus])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("penalty_history")
+}
+
+model AssignmentHistory {
+  id                          String                  @id @default(cuid())
+  orderId                     String                  @map("order_id")
+  assignedMasterId            String                  @map("assigned_master_id")
+  assignedWorkerId            String?                 @map("assigned_worker_id")
+  assignmentType              AssignmentType
+  assignmentResultStatus      AssignmentResultStatus
+  isMembershipAssignment      Boolean                 @default(false) @map("is_membership_assignment")
+  membershipSlotCountAtTime   Int                     @map("membership_slot_count_at_time")
+  weightAtTime                Float                   @map("weight_at_time")
+  serviceMidAtTime            String                  @map("service_mid_at_time")
+  regionGroupAtTime           String                  @map("region_group_at_time")
+  assignedAt                  DateTime                @default(now()) @map("assigned_at")
+  respondedAt                 DateTime?               @map("responded_at")
+  
+  // Relations
+  order                       Order                   @relation("AssignmentHistoryOrder", fields: [orderId], references: [id])
+  assignedMaster              Expert                  @relation("AssignedMaster", fields: [assignedMasterId], references: [id])
+  assignedWorker              SubAccount?             @relation("AssignedWorker", fields: [assignedWorkerId], references: [id])
+  
+  @@index([orderId])
+  @@index([assignedMasterId])
+  @@index([assignedWorkerId])
+  @@index([assignmentType])
+  @@index([assignmentResultStatus])
+  @@index([assignedAt])
+  @@map("assignment_history")
+}
+
+model MasterAssignmentPolicy {
+  id                      String    @id @default(cuid())
+  masterAccountId         String    @unique @map("master_account_id")
+  dailyAssignmentLimit    Int       @default(0) @map("daily_assignment_limit")
+  isActive                Boolean   @default(true) @map("is_active")
+  effectiveFrom           DateTime  @map("effective_from")
+  effectiveTo             DateTime? @map("effective_to")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @default(now()) @updatedAt @map("updated_at")
+  
+  // Relations
+  masterAccount           Expert    @relation(fields: [masterAccountId], references: [id])
+  
+  @@index([masterAccountId])
+  @@index([isActive])
+  @@index([effectiveFrom])
+  @@index([effectiveTo])
+  @@map("master_assignment_policy")
+}
+
 enum UserRole {
   customer
   expert
@@ -724,4 +912,72 @@ enum CommissionType {
 enum VatBasis {
   included
   excluded
+}
+
+enum ChannelType {
+  INTERNAL
+  PARTNER
+}
+
+enum ChannelStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum AccountType {
+  MASTER
+  SUB
+}
+
+enum PenaltyType {
+  SOFT_LIMIT
+  HARD_BLOCK
+  CATEGORY_LIMIT
+  REGION_LIMIT
+  MEMBERSHIP_SUSPEND
+}
+
+enum PenaltyStatus {
+  ACTIVE
+  EXPIRED
+}
+
+enum AssignmentType {
+  AUTO_ASSIGN
+  MANUAL_ASSIGN
+  REASSIGN
+}
+
+enum AssignmentResultStatus {
+  ACCEPTED
+  REJECTED
+  TIMEOUT
+  HOLD
+  SENT
+}
+
+enum PenaltyReasonCode {
+  HIGH_REJECTION
+  HIGH_TIMEOUT
+  CUSTOMER_COMPLAINT
+  POLICY_VIOLATION
+  MANUAL
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+  INACTIVE
+  EXPIRED
+}
+
+enum ExpertApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ExpertActiveStatus {
+  ACTIVE
+  INACTIVE
 }

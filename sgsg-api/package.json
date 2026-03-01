@@ -14,22 +14,26 @@
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "^5.0.0",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/helmet": "^13.0.2",
+    "@fastify/jwt": "^10.0.0",
+    "@prisma/client": "^7.4.2",
     "@sinclair/typebox": "^0.32.0",
-    "fastify": "^4.0.0",
-    "@fastify/cors": "^9.0.0",
-    "@fastify/helmet": "^11.0.0",
-    "fastify-plugin": "^4.0.0"
+    "bcrypt": "^6.0.0",
+    "fastify": "^5.7.4",
+    "fastify-plugin": "^5.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "prisma": "^5.0.0",
-    "tsx": "^3.0.0",
-    "typescript": "^5.0.0",
+    "@types/bcrypt": "^5.0.2",
     "@types/jest": "^29.0.0",
+    "@types/node": "^22.10.6",
+    "dotenv": "^16.6.1",
     "jest": "^29.0.0",
+    "prisma": "^7.4.2",
+    "supertest": "^6.0.0",
     "ts-jest": "^29.0.0",
-    "supertest": "^6.0.0"
+    "tsx": "^4.19.3",
+    "typescript": "^5.0.0"
   },
   "prisma": {
     "schema": "../prisma/schema.prisma"

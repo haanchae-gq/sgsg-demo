@@ -150,8 +150,12 @@
 9. 스코프 설정  
    - 적용 범위 선택  
      · 신규 주문에만 적용  
-     · 특정 채널에만 적용 여부  
+     · 특정 채널에만 적용 여부 (ACTIVE 상태 채널만 선택 가능)
+     · 채널별 적용 시 channel_status = ACTIVE 검증
    - 기존 주문에는 영향 없음 원칙 확인  
+   - INACTIVE 채널 정책:
+     · 기존 스코프 설정 유지
+     · 신규 스코프 설정 불가
 10. 저장 버튼 클릭  
 11. 시스템 사전 검증  
     - base_price ≥ 0 검증  
@@ -241,7 +245,11 @@
 9. 스코프 설정  
    - 해당 소분류에만 적용  
    - 특정 중분류 전체 적용 여부 선택 가능  
-   - 채널별 적용 여부 설정 가능  
+   - 채널별 적용 여부 설정 가능 (ACTIVE 상태 채널만 선택 가능)
+   - 채널별 적용 시 channel_status = ACTIVE 검증
+   - INACTIVE 채널 정책:
+     · 기존 스코프 설정 유지
+     · 신규 스코프 설정 불가
 10. 저장 버튼 클릭  
 11. 시스템 사전 검증  
     - 금액 ≥ 0 검증  
@@ -543,7 +551,7 @@
    - 적용 종료일(effective_end_date)  
 7. 신규 채널 수수료 설정 클릭  
 8. 수수료 정보 입력  
-   - channel_code 선택  
+   - channel_code 선택 (ACTIVE 상태 채널만 선택 가능)
    - commission_type 선택  
      · RATE: 퍼센트 수수료  
      · FIXED: 고정 수수료  
@@ -558,6 +566,7 @@
     - commission_value ≥ 0 검증  
     - RATE일 경우 0 ≤ value ≤ 100 검증  
     - 적용 시작일이 과거 확정 정산 주문에 영향을 주지 않는지 검증  
+    - channel_status = ACTIVE 여부 검증 (INACTIVE 채널은 신규 설정 불가)
 11. 저장 처리  
     - service_category_channel_commission 테이블에 row 생성  
     - 기존 동일 채널 수수료가 존재할 경우 종료일 자동 설정  

@@ -1,0 +1,14 @@
+# SSL Certificate Auto-renewal for SGSG Platform
+# Add to crontab with: crontab -e
+
+# Run certificate renewal every Monday at 3:00 AM
+0 3 * * 1 /home/goqual/sgsg-demo/scripts/renew-certs.sh
+
+# Alternatively, run twice a day at 3:00 AM and 3:00 PM for testing
+# 0 3,15 * * * /home/goqual/sgsg-demo/scripts/renew-certs.sh
+
+# Check certificate expiration daily at 2:00 AM (dry-run)
+# 0 2 * * * docker-compose -f /home/goqual/sgsg-demo/docker-compose.prod.yml exec -T certbot certbot renew --dry-run
+
+# Log rotation (keep last 30 days of logs)
+# 0 0 * * * find /home/goqual/sgsg-demo/logs -name "cert-renewal.log*" -mtime +30 -delete
