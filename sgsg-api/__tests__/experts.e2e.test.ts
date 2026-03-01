@@ -1,7 +1,7 @@
 import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from '../src/generated/prisma/client'
 import bcrypt from 'bcrypt'
 import authPlugin from '../src/plugins/auth'
 import authRoutes from '../src/routes/v1/auth'

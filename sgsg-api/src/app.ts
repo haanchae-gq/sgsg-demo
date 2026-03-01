@@ -1,7 +1,10 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from './generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
+import "dotenv/config";
 import authPlugin from './plugins/auth';
 import authRoutes from './routes/v1/auth';
 import expertRoutes from './routes/v1/experts';
@@ -21,13 +24,16 @@ const app = Fastify({ logger: true });
 
 // 서버 시작
 const start = async () => {
-  // Prisma Client 인스턴스 생성
+  // Prisma Client 인스턴스 생성 with adapter
+  const connectionString = process.env.DB_URL;
+  if (!connectionString) {
+    throw new Error('DB_URL environment variable is not set');
+  }
+  const pool = new pg.Pool({ connectionString });
+  const adapter = new PrismaPg(pool);
   const prisma = new PrismaClient({
-    datasources: {
-      db: {
-        url: process.env.DB_URL,
-      },
-    },
+    adapter,
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
 
   // Prisma Client를 Fastify 인스턴스에 주입

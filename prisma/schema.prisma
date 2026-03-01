@@ -1,6 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output = "../sgsg-api/node_modules/.prisma/client"
+  provider = "prisma-client"
+  output   = "../sgsg-api/src/generated/prisma"
 }
 
 datasource db {

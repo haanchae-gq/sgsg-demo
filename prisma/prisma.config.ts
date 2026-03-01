@@ -1,7 +1,7 @@
 export default {
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL,
-    },
+  datasourceUrl: process.env.DB_URL,
+  schema: './schema.prisma',
+  migrations: {
+    path: './migrations',
   },
-};
+}
