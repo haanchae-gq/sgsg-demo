@@ -19,6 +19,9 @@ beforeAll(() => {
   console.log('테스트 환경 설정 중...')
 })
 
+// Mock @prisma/internals to avoid ESM issues
+jest.mock('@prisma/internals', () => ({}))
+
 afterAll(() => {
   // 테스트 종료 후 실행
   console.log('테스트 완료.')

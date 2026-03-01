@@ -1,6 +1,7 @@
 generator client {
   provider = "prisma-client"
   output   = "../sgsg-api/src/generated/prisma"
+  engineType = "binary"
 }
 
 datasource db {

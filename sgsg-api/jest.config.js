@@ -1,7 +1,11 @@
 /** @type {import('jest').Config} */
 const config = {
   preset: 'ts-jest/presets/default-esm',
-  testEnvironment: 'node',
+  testEnvironment: 'jest-environment-node',
+  testEnvironmentOptions: {
+    nodeOptions: '--experimental-vm-modules',
+  },
+  injectGlobals: true,
   roots: ['<rootDir>'],
   testMatch: ['**/__tests__/**/*.test.ts', '**/?(*.)+(spec|test).ts'],
   transform: {
@@ -10,6 +14,9 @@ const config = {
       tsconfig: 'tsconfig.json',
     }],
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!@prisma|@prisma/client)',
+  ],
   moduleNameMapper: {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },

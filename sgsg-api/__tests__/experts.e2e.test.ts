@@ -2,6 +2,8 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import helmet from '@fastify/helmet'
 import { PrismaClient } from '../src/generated/prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import pg from 'pg'
 import bcrypt from 'bcrypt'
 import authPlugin from '../src/plugins/auth'
 import authRoutes from '../src/routes/v1/auth'
@@ -11,8 +13,17 @@ import expertRoutes from '../src/routes/v1/experts'
 async function buildTestApp() {
   const app = Fastify({ logger: false })
 
-  // Prisma Client 생성 (테스트용)
-  const prisma = new PrismaClient()
+  // Prisma Client 생성 (테스트용) with adapter
+  const connectionString = process.env.DB_URL
+  if (!connectionString) {
+    throw new Error('DB_URL environment variable is not set')
+  }
+  const pool = new pg.Pool({ connectionString })
+  const adapter = new PrismaPg(pool)
+  const prisma = new PrismaClient({
+    adapter,
+    log: ['error'],
+  })
 
   // Prisma Client 주입
   app.decorate('prisma', prisma)
