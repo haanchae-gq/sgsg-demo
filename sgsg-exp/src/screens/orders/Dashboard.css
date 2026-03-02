@@ -1,0 +1,190 @@
+.orders-dashboard {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+}
+
+.dashboard-header {
+  background: white;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dashboard-header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  color: #333;
+}
+
+.header-stats {
+  display: flex;
+  gap: 16px;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #666;
+  font-size: 14px;
+}
+
+.stat-item .antd-mobile-icon {
+  font-size: 16px;
+}
+
+.orders-tabs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.orders-tabs .adm-tabs-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.orders-tabs .adm-tabs-tab-wrapper {
+  background: white;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.orders-tabs .adm-tabs-tab {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.orders-list {
+  padding: 12px 16px 80px 16px; /* 하단 네비게이션 공간 확보 */
+  height: 100%;
+  overflow-y: auto;
+}
+
+.order-card {
+  margin-bottom: 12px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.order-card .adm-card-body {
+  padding: 16px;
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.order-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.order-number {
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+}
+
+.order-amount {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.order-service h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: #333;
+}
+
+.service-category {
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.order-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+}
+
+.detail-item .antd-mobile-icon {
+  font-size: 16px;
+  color: #999;
+  min-width: 16px;
+}
+
+.customer-notes {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.notes-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.notes-content {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.4;
+}
+
+/* 스와이프 액션 스타일 */
+.adm-swipe-action {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.adm-swipe-action-actions-right .adm-swipe-action-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 500;
+  min-width: 80px;
+}
+
+/* Pull to refresh */
+.adm-pull-to-refresh {
+  height: 100%;
+}
+
+.adm-pull-to-refresh-content {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* 무한 스크롤 */
+.adm-infinite-scroll {
+  padding: 20px 0;
+}

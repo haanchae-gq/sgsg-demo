@@ -1,15 +1,55 @@
 version: '3.8'
 
 services:
+  # Nginx SSL Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: sgsg-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_cache:/var/cache/nginx
+      - certbot_data:/var/www/certbot:ro
+      - letsencrypt_data:/etc/letsencrypt:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - sgsg-network
+
+  # Let's Encrypt Certbot (인증서 자동 관리) - 비활성화 상태
+  certbot:
+    image: certbot/certbot:latest
+    container_name: sgsg-certbot
+    volumes:
+      - certbot_data:/var/www/certbot
+      - letsencrypt_data:/etc/letsencrypt
+      - ./docker/certbot/scripts:/scripts:ro
+    environment:
+      - DOMAIN=localhost  # 실제 도메인으로 교체 필요
+      - EMAIL=admin@sgsg.com  # 실제 이메일로 교체 필요
+    entrypoint: ["tail", "-f", "/dev/null"]
+    restart: "no"  # 개발 환경에서는 재시작 비활성화
+    networks:
+      - sgsg-network
+    profiles:
+      - production  # 운영 환경에서만 활성화
+
   postgres:
     image: postgres:15-alpine
     container_name: sgsg-postgres
     environment:
       POSTGRES_USER: sgsg
-      POSTGRES_PASSWORD: sgsg5goqual123!
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sgsg5goqual123!}
       POSTGRES_DB: sgsg_db
     ports:
-      - "5432:5432"
+      - "5432:5432"  
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -21,25 +61,7 @@ services:
     networks:
       - sgsg-network
 
-  # 백엔드 API 서비스 (추후 구현)
-  # api:
-  #   build:
-  #     context: ./sgsg-api
-  #     dockerfile: Dockerfile.dev
-  #   container_name: sgsg-api
-  #   environment:
-  #     NODE_ENV: development
-  #     DB_URL: postgresql://sgsg:sgsg5goqual123!@postgres:5432/sgsg_db
-  #   ports:
-  #     - "3001:3001"
-  #   volumes:
-  #     - ./sgsg-api:/app
-  #     - /app/node_modules
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #   networks:
-  #     - sgsg-network
+  # 백엔드 API 서비스 (PM2로 호스트에서 실행)
 
   # 어드민 대시보드 (추후 구현)
   # admin:
@@ -79,8 +101,151 @@ services:
   #   networks:
   #     - sgsg-network
 
+  # 모니터링 스택 (Prometheus + Grafana)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: sgsg-prometheus
+    network_mode: host
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+      - '--web.listen-address=0.0.0.0:9092'
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: sgsg-grafana
+    ports:
+      - "3004:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    restart: unless-stopped
+    networks:
+      - sgsg-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # 로깅 스택 (ELK)
+  elasticsearch:
+    image: elasticsearch:8.17.0
+    container_name: sgsg-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms256m -Xmx512m"  # 메모리 제한
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    networks:
+      - sgsg-network
+    mem_limit: 768m  # 컨테이너 메모리 제한
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  logstash:
+    image: logstash:8.17.0
+    container_name: sgsg-logstash
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+    volumes:
+      - ./docker/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./logs:/var/log/app:ro
+      - ~/.pm2/logs:/var/log/pm2:ro
+      - ./sgsg-api/logs:/var/log/sgsg-api:ro
+    environment:
+      - LS_JAVA_OPTS=-Xms128m -Xmx256m  # 메모리 제한
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    networks:
+      - sgsg-network
+    mem_limit: 384m  # 컨테이너 메모리 제한
+
+  kibana:
+    image: kibana:8.17.0
+    container_name: sgsg-kibana
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - NODE_OPTIONS="--max-old-space-size=512"  # 메모리 제한
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    networks:
+      - sgsg-network
+    mem_limit: 640m  # 컨테이너 메모리 제한
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s  
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # PostgreSQL 자동 백업 서비스
+  backup:
+    image: postgres:15-alpine
+    container_name: sgsg-backup
+    depends_on:
+      - postgres
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=sgsg_db
+      - DB_USER=sgsg
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-sgsg5goqual123!}
+      - BACKUP_DIR=/backups
+      - RETENTION_DAYS=7
+      - CRON_SCHEDULE="0 2 * * *"  # 매일 오전 2시 실행
+    volumes:
+      - ./scripts/backup.sh:/backup.sh:ro
+      - ./backups:/backups
+      - /etc/localtime:/etc/localtime:ro
+    entrypoint: >
+      sh -c "
+      echo '$$CRON_SCHEDULE /backup.sh >> /var/log/cron.log 2>&1' > /etc/crontabs/root &&
+      crond -l 2 -f
+      "
+    restart: unless-stopped
+    networks:
+      - sgsg-network
+
 volumes:
   postgres_data:
+    driver: local
+  nginx_cache:
+    driver: local
+  certbot_data:
+    driver: local
+  letsencrypt_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  elasticsearch_data:
     driver: local
 
 networks:

@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma/client'
+import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcrypt'
 import { 
   ExpertProfileUpdateRequest, 
@@ -327,7 +327,7 @@ export class ExpertService {
 
     const updateData: any = {}
     if (data.permissions !== undefined) updateData.permissions = data.permissions
-    if (data.isActive !== undefined) updateData.activeStatus = data.isActive ? 'ACTIVE' : 'INACTIVE'
+    if (data.activeStatus !== undefined) updateData.activeStatus = data.activeStatus
 
     const updatedSubAccount = await this.prisma.subAccount.update({
       where: { id: subAccountId },
@@ -503,5 +503,608 @@ export class ExpertService {
         user: penalty.appliedByAdmin.user
       } : null
     }))
+  }
+
+  // 서비스 매핑 관련 메서드들
+  async getServiceMappings(expertId: string, pagination: { page: number; limit: number }) {
+    const { page, limit } = pagination;
+    const skip = (page - 1) * limit;
+
+    const [mappings, total] = await Promise.all([
+      this.prisma.expertServiceMapping.findMany({
+        where: { expertId },
+        include: {
+          serviceItem: {
+            include: {
+              category: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.expertServiceMapping.count({
+        where: { expertId },
+      }),
+    ]);
+
+    return {
+      data: mappings.map((mapping: any) => ({
+        ...mapping,
+        createdAt: mapping.createdAt.toISOString(),
+        updatedAt: mapping.updatedAt.toISOString(),
+        serviceItem: {
+          ...mapping.serviceItem,
+          createdAt: mapping.serviceItem.createdAt.toISOString(),
+          updatedAt: mapping.serviceItem.updatedAt.toISOString(),
+        },
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async createServiceMapping(expertId: string, data: { serviceItemId: string; customPrice?: number; isAvailable?: boolean }) {
+    // 중복 확인
+    const existing = await this.prisma.expertServiceMapping.findUnique({
+      where: {
+        expertId_serviceItemId: {
+          expertId,
+          serviceItemId: data.serviceItemId,
+        },
+      },
+    });
+
+    if (existing) {
+      throw {
+        code: 'EXPERT_SERVICE_001',
+        message: '해당 서비스는 이미 등록되어 있습니다.',
+      };
+    }
+
+    const mapping = await this.prisma.expertServiceMapping.create({
+      data: {
+        expertId,
+        serviceItemId: data.serviceItemId,
+        customPrice: data.customPrice,
+        isAvailable: data.isAvailable ?? true,
+      },
+      include: {
+        serviceItem: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      ...mapping,
+      createdAt: mapping.createdAt.toISOString(),
+      updatedAt: mapping.updatedAt.toISOString(),
+      serviceItem: {
+        ...mapping.serviceItem,
+        createdAt: mapping.serviceItem.createdAt.toISOString(),
+        updatedAt: mapping.serviceItem.updatedAt.toISOString(),
+      },
+    };
+  }
+
+  async updateServiceMapping(mappingId: string, data: { customPrice?: number; isAvailable?: boolean }) {
+    const mapping = await this.prisma.expertServiceMapping.findUnique({
+      where: { id: mappingId },
+    });
+
+    if (!mapping) {
+      throw {
+        code: 'EXPERT_SERVICE_002',
+        message: '서비스 매핑을 찾을 수 없습니다.',
+      };
+    }
+
+    const updateData: any = {};
+    if (data.customPrice !== undefined) updateData.customPrice = data.customPrice;
+    if (data.isAvailable !== undefined) updateData.isAvailable = data.isAvailable;
+
+    const updated = await this.prisma.expertServiceMapping.update({
+      where: { id: mappingId },
+      data: updateData,
+      include: {
+        serviceItem: {
+          include: {
+            category: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      ...updated,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+      serviceItem: {
+        ...updated.serviceItem,
+        createdAt: updated.serviceItem.createdAt.toISOString(),
+        updatedAt: updated.serviceItem.updatedAt.toISOString(),
+      },
+    };
+  }
+
+  async deleteServiceMapping(mappingId: string) {
+    const mapping = await this.prisma.expertServiceMapping.findUnique({
+      where: { id: mappingId },
+    });
+
+    if (!mapping) {
+      throw {
+        code: 'EXPERT_SERVICE_002',
+        message: '서비스 매핑을 찾을 수 없습니다.',
+      };
+    }
+
+    await this.prisma.expertServiceMapping.delete({
+      where: { id: mappingId },
+    });
+  }
+
+  // 전문가 주문 목록 조회
+  async getExpertOrders(
+    expertId: string,
+    pagination: { page: number; limit: number },
+    filter: { status?: string; dateFrom?: string; dateTo?: string }
+  ) {
+    const { page, limit } = pagination;
+    const { status, dateFrom, dateTo } = filter;
+    const skip = (page - 1) * limit;
+
+    const where: any = { expertId };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (dateFrom || dateTo) {
+      where.createdAt = {};
+      if (dateFrom) where.createdAt.gte = new Date(dateFrom);
+      if (dateTo) where.createdAt.lte = new Date(dateTo);
+    }
+
+    const [orders, total] = await Promise.all([
+      this.prisma.order.findMany({
+        where,
+        include: {
+          customer: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  phone: true,
+                },
+              },
+            },
+          },
+          serviceItem: {
+            include: {
+              category: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+          address: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.order.count({ where }),
+    ]);
+
+    return {
+      data: orders.map((order: any) => ({
+        ...order,
+        createdAt: order.createdAt.toISOString(),
+        updatedAt: order.updatedAt.toISOString(),
+        requestedDate: order.requestedDate.toISOString(),
+        confirmedDate: order.confirmedDate?.toISOString(),
+        startedAt: order.startedAt?.toISOString(),
+        completedAt: order.completedAt?.toISOString(),
+        cancelledAt: order.cancelledAt?.toISOString(),
+        customer: {
+          ...order.customer,
+          user: order.customer.user,
+        },
+        serviceItem: {
+          ...order.serviceItem,
+          category: order.serviceItem.category,
+        },
+        address: {
+          ...order.address,
+          createdAt: order.address.createdAt.toISOString(),
+          updatedAt: order.address.updatedAt.toISOString(),
+        },
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // 정산 내역 조회
+  async getSettlements(
+    expertId: string,
+    pagination: { page: number; limit: number },
+    filter: { year?: number; month?: number; status?: string }
+  ) {
+    const { page, limit } = pagination;
+    const { year, month, status } = filter;
+    const skip = (page - 1) * limit;
+
+    const where: any = { expertId };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (year || month) {
+      const startDate = new Date(year || new Date().getFullYear(), (month || 1) - 1, 1);
+      const endDate = new Date(year || new Date().getFullYear(), month || 12, 0);
+
+      where.periodStart = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
+
+    const [settlements, total] = await Promise.all([
+      this.prisma.settlement.findMany({
+        where,
+        orderBy: { periodStart: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.settlement.count({ where }),
+    ]);
+
+    return {
+      data: settlements.map((settlement: any) => ({
+        ...settlement,
+        createdAt: settlement.createdAt.toISOString(),
+        updatedAt: settlement.updatedAt.toISOString(),
+        periodStart: settlement.periodStart.toISOString(),
+        periodEnd: settlement.periodEnd.toISOString(),
+        approvedAt: settlement.approvedAt?.toISOString(),
+        paidAt: settlement.paidAt?.toISOString(),
+      })),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  // 스케줄 관련 메서드들
+  async getSchedule(expertId: string, filter: { dateFrom?: string; dateTo?: string; status?: string } = {}) {
+    const { dateFrom, dateTo, status } = filter;
+    const where: any = { expertId };
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (dateFrom || dateTo) {
+      where.scheduledDate = {};
+      if (dateFrom) where.scheduledDate.gte = new Date(dateFrom);
+      if (dateTo) where.scheduledDate.lte = new Date(dateTo);
+    }
+
+    const schedules = await this.prisma.serviceSchedule.findMany({
+      where,
+      include: {
+        order: {
+          include: {
+            customer: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+            serviceItem: {
+              select: {
+                name: true,
+              },
+            },
+            address: {
+              select: {
+                addressLine1: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { scheduledDate: 'asc' },
+    });
+
+    return schedules.map((schedule: any) => ({
+      ...schedule,
+      createdAt: schedule.createdAt.toISOString(),
+      updatedAt: schedule.updatedAt.toISOString(),
+      scheduledDate: schedule.scheduledDate.toISOString(),
+      order: {
+        ...schedule.order,
+        customer: {
+          user: schedule.order.customer.user,
+        },
+        serviceItem: schedule.order.serviceItem,
+        address: schedule.order.address,
+      },
+    }));
+  }
+
+  async createSchedule(expertId: string, data: { orderId: string; scheduledDate: string; startTime: string; endTime: string; notes?: string }) {
+    // 주문이 해당 전문가의 것인지 확인
+    const order = await this.prisma.order.findFirst({
+      where: {
+        id: data.orderId,
+        expertId,
+      },
+    });
+
+    if (!order) {
+      throw {
+        code: 'EXPERT_SCHEDULE_001',
+        message: '주문을 찾을 수 없거나 접근 권한이 없습니다.',
+      };
+    }
+
+    // 기존 스케줄이 있는지 확인
+    const existing = await this.prisma.serviceSchedule.findUnique({
+      where: { orderId: data.orderId },
+    });
+
+    if (existing) {
+      throw {
+        code: 'EXPERT_SCHEDULE_002',
+        message: '해당 주문에 이미 스케줄이 등록되어 있습니다.',
+      };
+    }
+
+    const schedule = await this.prisma.serviceSchedule.create({
+      data: {
+        orderId: data.orderId,
+        expertId,
+        scheduledDate: new Date(data.scheduledDate),
+        startTime: data.startTime,
+        endTime: data.endTime,
+        notes: data.notes,
+      },
+      include: {
+        order: {
+          include: {
+            customer: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+            serviceItem: {
+              select: {
+                name: true,
+              },
+            },
+            address: {
+              select: {
+                addressLine1: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      ...schedule,
+      createdAt: schedule.createdAt.toISOString(),
+      updatedAt: schedule.updatedAt.toISOString(),
+      scheduledDate: schedule.scheduledDate.toISOString(),
+      order: {
+        ...schedule.order,
+        customer: {
+          user: schedule.order.customer.user,
+        },
+        serviceItem: schedule.order.serviceItem,
+        address: schedule.order.address,
+      },
+    };
+  }
+
+  async updateSchedule(expertId: string, scheduleId: string, data: { scheduledDate?: string; startTime?: string; endTime?: string; status?: string; notes?: string }) {
+    const schedule = await this.prisma.serviceSchedule.findFirst({
+      where: {
+        id: scheduleId,
+        expertId,
+      },
+    });
+
+    if (!schedule) {
+      throw {
+        code: 'EXPERT_SCHEDULE_003',
+        message: '스케줄을 찾을 수 없습니다.',
+      };
+    }
+
+    const updateData: any = {};
+    if (data.scheduledDate) updateData.scheduledDate = new Date(data.scheduledDate);
+    if (data.startTime) updateData.startTime = data.startTime;
+    if (data.endTime) updateData.endTime = data.endTime;
+    if (data.status) updateData.status = data.status;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+
+    const updated = await this.prisma.serviceSchedule.update({
+      where: { id: scheduleId },
+      data: updateData,
+      include: {
+        order: {
+          include: {
+            customer: {
+              include: {
+                user: {
+                  select: {
+                    name: true,
+                  },
+                },
+              },
+            },
+            serviceItem: {
+              select: {
+                name: true,
+              },
+            },
+            address: {
+              select: {
+                addressLine1: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return {
+      ...updated,
+      createdAt: updated.createdAt.toISOString(),
+      updatedAt: updated.updatedAt.toISOString(),
+      scheduledDate: updated.scheduledDate.toISOString(),
+    };
+  }
+
+  async deleteSchedule(expertId: string, scheduleId: string) {
+    const schedule = await this.prisma.serviceSchedule.findFirst({
+      where: {
+        id: scheduleId,
+        expertId,
+      },
+    });
+
+    if (!schedule) {
+      throw {
+        code: 'EXPERT_SCHEDULE_003',
+        message: '스케줄을 찾을 수 없습니다.',
+      };
+    }
+
+    await this.prisma.serviceSchedule.delete({
+      where: { id: scheduleId },
+    });
+  }
+
+  // 통계 정보 조회
+  async getStatistics(expertId: string) {
+    const expert = await this.prisma.expert.findUnique({
+      where: { id: expertId },
+    });
+
+    if (!expert) {
+      throw {
+        code: 'EXPERT_001',
+        message: '전문가 프로필을 찾을 수 없습니다.',
+      };
+    }
+
+    // 이번 달 시작과 끝 날짜
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    const [
+      thisMonthOrders,
+      thisMonthEarnings,
+      pendingOrders,
+      totalReviews
+    ] = await Promise.all([
+      // 이번 달 주문 수
+      this.prisma.order.count({
+        where: {
+          expertId,
+          createdAt: {
+            gte: startOfMonth,
+            lte: endOfMonth,
+          },
+        },
+      }),
+      // 이번 달 수익
+      this.prisma.order.aggregate({
+        where: {
+          expertId,
+          status: { in: ['paid', 'as_requested'] },
+          createdAt: {
+            gte: startOfMonth,
+            lte: endOfMonth,
+          },
+        },
+        _sum: {
+          totalAmount: true,
+        },
+      }),
+      // 대기 중인 주문 수
+      this.prisma.order.count({
+        where: {
+          expertId,
+          status: {
+            in: ['new', 'schedule_pending', 'schedule_confirmed'],
+          },
+        },
+      }),
+      // 총 리뷰 수
+      this.prisma.review.count({
+        where: { expertId },
+      }),
+    ]);
+
+    return {
+      totalOrders: expert.totalCompletedOrders,
+      completedOrders: expert.totalCompletedOrders,
+      totalEarnings: expert.totalEarnings,
+      averageRating: expert.rating || 0,
+      totalReviews,
+      thisMonthOrders,
+      thisMonthEarnings: thisMonthEarnings._sum?.totalAmount || 0,
+      pendingOrders,
+    };
   }
 }

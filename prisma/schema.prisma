@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client"
-  output   = "../sgsg-api/src/generated/prisma"
+  output   = "../sgsg-api/node_modules/.prisma/client"
   engineType = "binary"
 }
 
@@ -31,6 +31,7 @@ model User {
   expert                           Expert?
   notifications                    Notification[]
   uploadedAttachments              OrderAttachment[]
+  uploadedFiles                    UploadedFile[]
   orderNotes                       OrderNote[]
   ServiceItemPrice                 ServiceItemPrice[]
   ServiceCategoryOnSiteFeeMapping  ServiceCategoryOnSiteFeeMapping[]
@@ -38,12 +39,49 @@ model User {
   subAccount                      SubAccount?                         @relation("SubAccountUser")
   channelsCreated                  Channel[]                           @relation("ChannelCreatedBy")
   channelsUpdated                  Channel[]                           @relation("ChannelUpdatedBy")
+  reviewHelpfulMarks               ReviewHelpful[]
+  reviewReports                    ReviewReport[]                      @relation("ReviewReporter")
+  resolvedReports                  ReviewReport[]                      @relation("ReviewResolver")
+  refreshTokens                    RefreshToken[]
 
   @@index([email])
-  @@index([phone])
+  @@index([phone])  
   @@index([role, status])
   @@index([createdAt])
   @@map("users")
+}
+
+// 리프레시 토큰 관리
+model RefreshToken {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  token       String    @unique
+  expiresAt   DateTime  @map("expires_at")
+  isRevoked   Boolean   @default(false) @map("is_revoked")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+  
+  // 관계 설정
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// JWT 토큰 블랙리스트
+model TokenBlacklist {
+  id          String    @id @default(cuid())
+  token       String    @unique      // JWT jti 또는 전체 토큰
+  userId      String?   @map("user_id")
+  reason      String?                // 블랙리스트 이유 (logout, security_breach 등)
+  expiresAt   DateTime  @map("expires_at")  // 원래 토큰 만료 시간
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  @@index([token])
+  @@index([expiresAt])
+  @@map("token_blacklist")
 }
 
 model Customer {
@@ -125,6 +163,7 @@ model Admin {
   updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   penaltyHistoriesApplied PenaltyHistory[] @relation("PenaltyHistoryAdmin")
+  approvedReviews         Review[]
   @@index([department])
   @@map("admins")
 }
@@ -157,61 +196,50 @@ model Address {
 }
 
 model ServiceCategory {
-  id            String               @id @default(cuid())
-  code          String               @unique
-  name          String               @unique
+  id            String        @id @default(cuid())
+  name          String        @unique
+  slug          String        @unique
   description   String?
-  displayOrder  Int                  @default(0) @map("display_order")
-  isActive      Boolean              @default(true) @map("is_active")
-  createdAt     DateTime             @default(now()) @map("created_at")
-  updatedAt     DateTime             @default(now()) @updatedAt @map("updated_at")
-  subcategories ServiceSubcategory[]
+  iconUrl       String?       @map("icon_url")
+  displayOrder  Int           @default(0) @map("display_order")
+  isActive      Boolean       @default(true) @map("is_active")
+  metadata      Json?         @default("{}") 
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @default(now()) @updatedAt @map("updated_at")
+  items         ServiceItem[]
 
   @@index([displayOrder])
   @@index([isActive])
+  @@index([slug])
   @@map("service_categories")
 }
 
-model ServiceSubcategory {
-  id                  String          @id @default(cuid())
-  categoryId          String          @map("category_id")
-  code                String
-  name                String
-  description         String?
-  membershipAvailable Boolean         @default(false) @map("membership_available")
-  displayOrder        Int             @default(0) @map("display_order")
-  isActive            Boolean         @default(true) @map("is_active")
-  createdAt           DateTime        @default(now()) @map("created_at")
-  updatedAt           DateTime        @default(now()) @updatedAt @map("updated_at")
-  category            ServiceCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  items               ServiceItem[]
-
-  @@unique([categoryId, code])
-  @@index([membershipAvailable])
-  @@index([isActive])
-  @@index([categoryId])
-  @@map("service_subcategories")
-}
+// ServiceSubcategory model removed - not in current DB structure
 
 model ServiceItem {
   id                               String                             @id @default(cuid())
-  subcategoryId                    String                             @map("subcategory_id")
-  code                             String
+  categoryId                       String                             @map("category_id")
   name                             String
   description                      String?
-  displayOrder                     Int                                @default(0) @map("display_order")
+  basePrice                        Float                              @map("base_price")
+  estimatedTime                    Int?                               @map("estimated_time")
+  requirements                     String[]                           @default([])
+  images                           String[]                           @default([])
   isActive                         Boolean                            @default(true) @map("is_active")
+  displayOrder                     Int                                @default(0) @map("display_order")
+  metadata                         Json?                              @default("{}")
   createdAt                        DateTime                           @default(now()) @map("created_at")
   updatedAt                        DateTime                           @default(now()) @updatedAt @map("updated_at")
-  subcategory                      ServiceSubcategory                 @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  category                         ServiceCategory                    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   expertMappings                   ExpertServiceMapping[]
   orders                           Order[]
   ServiceItemPrice                 ServiceItemPrice[]
   ServiceCategoryChannelCommission ServiceCategoryChannelCommission[]
 
-  @@unique([subcategoryId, code])
   @@index([isActive])
-  @@index([subcategoryId])
+  @@index([categoryId])
+  @@index([basePrice])
+  @@index([displayOrder])
   @@map("service_items")
 }
 
@@ -545,30 +573,52 @@ model SettlementDetail {
 }
 
 model Review {
-  id           String    @id @default(cuid())
-  orderId      String    @unique @map("order_id")
-  customerId   String    @map("customer_id")
-  expertId     String    @map("expert_id")
-  rating       Int
-  title        String?
-  content      String
-  images       String[]  @default([])
-  isVerified   Boolean   @default(true) @map("is_verified")
-  isApproved   Boolean   @default(false) @map("is_approved")
-  approvedAt   DateTime? @map("approved_at")
-  helpfulCount Int       @default(0) @map("helpful_count")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at")
-  customer     Customer  @relation(fields: [customerId], references: [id])
-  expert       Expert    @relation(fields: [expertId], references: [id])
-  order        Order     @relation(fields: [orderId], references: [id])
+  id              String    @id @default(cuid())
+  orderId         String    @unique @map("order_id")
+  customerId      String    @map("customer_id")
+  expertId        String    @map("expert_id")
+  rating          Int
+  title           String?
+  content         String
+  images          String[]  @default([])
+  isVerified      Boolean   @default(true) @map("is_verified")
+  isApproved      Boolean   @default(false) @map("is_approved")
+  approvedAt      DateTime? @map("approved_at")
+  approvedById    String?   @map("approved_by_id")
+  rejectedAt      DateTime? @map("rejected_at")
+  rejectionReason String?   @map("rejection_reason")
+  adminNote       String?   @map("admin_note")
+  helpfulCount    Int       @default(0) @map("helpful_count")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at")
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  expert          Expert    @relation(fields: [expertId], references: [id])
+  order           Order     @relation(fields: [orderId], references: [id])
+  approvedBy      Admin?    @relation(fields: [approvedById], references: [id])
+  helpfulMarks    ReviewHelpful[]
+  reports         ReviewReport[]
 
   @@index([expertId], map: "idx_reviews_expert_id")
   @@index([customerId], map: "idx_reviews_customer_id")
   @@index([rating], map: "idx_reviews_rating")
   @@index([isApproved], map: "idx_reviews_is_approved")
   @@index([createdAt], map: "idx_reviews_created_at")
+  @@index([approvedById], map: "idx_reviews_approved_by")
   @@map("reviews")
+}
+
+model ReviewHelpful {
+  id        String   @id @default(cuid())
+  reviewId  String   @map("review_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, userId])
+  @@index([reviewId])
+  @@index([userId])
+  @@map("review_helpful")
 }
 
 model Notification {
@@ -772,6 +822,46 @@ model MasterAssignmentPolicy {
   @@index([effectiveFrom])
   @@index([effectiveTo])
   @@map("master_assignment_policy")
+}
+
+model UploadedFile {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  originalName String   @map("original_name")
+  storagePath  String   @map("storage_path")
+  mimeType     String   @map("mime_type")
+  size         Int
+  metadata     Json?    @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at")
+  
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@map("uploaded_files")
+}
+
+model ReviewReport {
+  id          String           @id @default(cuid())
+  reviewId    String           @map("review_id")
+  reporterId  String           @map("reporter_id")
+  reason      ReportReason
+  description String?
+  status      ReportStatus     @default(PENDING)
+  adminNote   String?          @map("admin_note")
+  resolvedAt  DateTime?        @map("resolved_at")
+  resolvedBy  String?          @map("resolved_by")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @default(now()) @updatedAt @map("updated_at")
+  review      Review           @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reporter    User             @relation("ReviewReporter", fields: [reporterId], references: [id])
+  resolver    User?            @relation("ReviewResolver", fields: [resolvedBy], references: [id])
+
+  @@unique([reviewId, reporterId])
+  @@index([reviewId])
+  @@index([reporterId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("review_reports")
 }
 
 enum UserRole {
@@ -981,4 +1071,20 @@ enum ExpertApprovalStatus {
 enum ExpertActiveStatus {
   ACTIVE
   INACTIVE
+}
+
+enum ReportReason {
+  INAPPROPRIATE_CONTENT
+  SPAM
+  FALSE_INFORMATION
+  HARASSMENT
+  COPYRIGHT_VIOLATION
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
 }

@@ -118,11 +118,114 @@ cd sgsg-api
 npm run dev          # Start development server (tsx watch)
 npm run build        # Build for production (tsc)
 npm start            # Run production build
-npm test             # Run tests (Jest – no tests yet)
+npm test             # Run tests (Jest)
 npm run prisma:generate  # Generate Prisma client
 npm run prisma:migrate   # Run migrations
 npm run prisma:studio    # Open Prisma Studio
 ```
+
+## API Documentation
+
+### Service Catalog API (Newly Implemented - Session 3)
+The service catalog API provides a 2-tier service categorization system:
+
+**Available Endpoints:**
+- `GET /api/v1/services/categories` - List service categories
+- `GET /api/v1/services/categories/:id` - Get category details
+- `GET /api/v1/services/categories/tree` - Get full category tree
+- `GET /api/v1/services/categories/:id/items` - Get items by category
+- `GET /api/v1/services/items` - List all service items
+- `GET /api/v1/services/items/:id` - Get item details
+- `GET /api/v1/services/items/:id/experts` - Get experts for service
+
+**Features:**
+- ✅ Pagination and filtering
+- ✅ Search functionality
+- ✅ Price range filtering
+- ✅ Category-item relationships
+- ✅ TypeScript validation with TypeBox
+- ✅ Error handling with consistent response format
+
+**Sample Data Available:**
+- Categories: 청소 서비스, 집수리 서비스, 이사 서비스
+- Items: 정기 청소, 대청소, 싱크대 수리, 콘센트 설치, 소형 이사
+
+**API Documentation:** See `sgsg-api/docs/services-api.md` for detailed usage examples.
+
+**Test the API:**
+```bash
+# Start the server
+cd sgsg-api && npm run dev
+
+# Test endpoints
+curl http://localhost:4000/api/v1/services/categories
+curl http://localhost:4000/api/v1/services/categories/cl1?includeItems=true
+curl http://localhost:4000/api/v1/services/categories/tree
+curl "http://localhost:4000/api/v1/services/items?search=청소"
+curl "http://localhost:4000/api/v1/services/items?priceRange.min=100000&priceRange.max=200000"
+```
+
+### Order & Payment API (Newly Implemented - Session 4)
+The order and payment API provides complete order management from creation to payment completion.
+
+**Available Endpoints:**
+- `POST /api/v1/orders` - Create new order
+- `GET /api/v1/orders` - List orders (filtered by user role)
+- `GET /api/v1/orders/:id` - Get order details
+- `PUT /api/v1/orders/:id` - Update order information
+- `POST /api/v1/orders/:id/cancel` - Cancel order
+- `GET /api/v1/orders/:id/notes` - Get order notes
+- `POST /api/v1/orders/:id/notes` - Add order note
+- `GET /api/v1/orders/:id/attachments` - Get order attachments
+- `POST /api/v1/payments/initialize` - Initialize payment
+- `POST /api/v1/payments/complete` - Complete payment (PG callback)
+- `GET /api/v1/payments/:id` - Get payment details
+- `POST /api/v1/payments/:id/refund` - Refund payment (admin only)
+
+**Features:**
+- ✅ Complete order lifecycle management
+- ✅ Payment state synchronization
+- ✅ Role-based access control
+- ✅ Order notes and attachments systems
+- ✅ Transaction safety with Prisma
+- ✅ PG integration structure
+- ✅ Automatic order numbering
+
+**Sample Workflow:**
+```bash
+# Customer login
+curl -X POST http://localhost:4000/api/v1/auth/login -H "Content-Type: application/json" -d '{"email":"customer@test.com","password":"Customer@123456"}'
+
+# Create order
+curl -X POST http://localhost:4000/api/v1/orders -H "Authorization: Bearer {token}" -H "Content-Type: application/json" -d '{"serviceItemId":"it1","addressId":"addr1","requestedDate":"2026-03-05T10:00:00Z","customerNotes":"정기 청소 신청"}'
+
+# Initialize payment
+curl -X POST http://localhost:4000/api/v1/payments/initialize -H "Authorization: Bearer {token}" -H "Content-Type: application/json" -d '{"orderId":"{order_id}","paymentType":"deposit","method":"credit_card"}'
+
+# Complete payment (PG callback)
+curl -X POST http://localhost:4000/api/v1/payments/complete -H "Content-Type: application/json" -d '{"paymentId":"{payment_id}","pgTransactionId":"PG-TEST-12345","pgResponse":{"status":"success"}}'
+```
+
+**Test Data:**
+- Customer: customer@test.com / Customer@123456
+- Sample Order: ORD-20260301-725992 (정기 청소, 150,000원)
+- Payment: 30,000원 예약금 결제 완료
+
+**API Documentation:** See `sgsg-api/docs/orders-payments-api.md` for detailed usage.
+
+### Expert Management API (Implemented - Session 2)
+Expert service mapping and management functionality.
+
+**Available Endpoints:**
+- `GET /api/v1/experts/me/services` - Get expert service mappings
+- `POST /api/v1/experts/me/services` - Add service mapping
+- Additional expert management endpoints (partial implementation)
+
+**Sample Expert:**
+- Expert: expert@sgsg.com / Expert@123456
+- Services: 정기 청소 (140,000원), 대청소 (280,000원)
+
+**Documentation:** See `sgsg-api/docs/experts-api.md` for details.```
 
 ### Admin Dashboard (sgsg-adm)
 ```bash
@@ -238,6 +341,202 @@ These skills can be used when working on this project to accelerate development 
 3. Update documentation as needed
 4. Follow existing code patterns
 5. Do not commit `.env` or sensitive files
+
+## Operational Features (Session 5)
+
+The project now includes comprehensive operational features for monitoring, logging, backup, and API documentation. All services are managed through Docker Compose for consistent development and production environments.
+
+### API Documentation (Swagger/OpenAPI)
+
+The Fastify API now includes automatic OpenAPI documentation generation using `@fastify/swagger` and `@fastify/swagger-ui`.
+
+**Features:**
+- ✅ Automatic schema generation from TypeBox validation schemas
+- ✅ Interactive API documentation at `/documentation`
+- ✅ OpenAPI 3.0 specification at `/documentation/json`
+- ✅ Request/response examples and validation rules
+- ✅ Authentication documentation support
+
+**Access:**
+- Swagger UI: http://localhost:4000/documentation
+- OpenAPI JSON: http://localhost:4000/documentation/json
+
+**Configuration:** Defined in `sgsg-api/src/app.ts` lines 30-36.
+
+### Monitoring System (Prometheus + Grafana)
+
+A complete monitoring stack collects metrics from the Fastify API and provides visualization dashboards.
+
+**Components:**
+- **Prometheus**: Metrics collection and storage (port 9090)
+- **Grafana**: Visualization dashboards (port 3003)
+- **prom-client**: Node.js metrics library integrated into Fastify
+
+**Available Metrics:**
+- HTTP request duration, count, and status codes
+- Database query performance (via Prisma metrics)
+- System resources (CPU, memory, event loop lag)
+- Custom business metrics
+
+**Access:**
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3003 (admin/admin)
+- API Metrics: http://localhost:4000/metrics
+
+**Configuration Files:**
+- `docker/prometheus/prometheus.yml` - Prometheus configuration
+- `docker/grafana/provisioning/datasources/prometheus.yml` - Grafana data source
+
+### Logging System (ELK Stack)
+
+Centralized logging using Elasticsearch, Logstash, and Kibana for structured log analysis.
+
+**Components:**
+- **Elasticsearch**: Log storage and indexing (port 9200)
+- **Logstash**: Log processing pipeline (ports 5044, 5000)
+- **Kibana**: Log visualization and analysis (port 5601)
+- **Pino**: Structured JSON logging from Fastify
+
+**Log Flow:**
+1. Fastify logs to `./logs/app.log` in JSON format
+2. Logstash reads log files and parses JSON
+3. Elasticsearch indexes logs for fast search
+4. Kibana provides dashboards and query interface
+
+**Access:**
+- Kibana: http://localhost:5601
+- Elasticsearch API: http://localhost:9200
+- Log files: `./logs/app.log`
+
+**Configuration Files:**
+- `docker/logstash/logstash.conf` - Logstash processing pipeline
+- Fastify logging config in `sgsg-api/src/app.ts` lines 56-67
+
+### Automatic Backup System
+
+Scheduled PostgreSQL database backups with retention policy management.
+
+**Features:**
+- ✅ Daily automated backups (configurable schedule)
+- ✅ 7-day retention (configurable)
+- ✅ Backup compression (gzip)
+- ✅ Backup verification
+- ✅ Email notifications (optional)
+
+**Backup Schedule:** Daily at 2:00 AM (configurable via `CRON_SCHEDULE`)
+
+**Backup Location:** `./backups/` directory with timestamped files
+
+**Configuration:**
+- `scripts/backup.sh` - Backup script with error handling
+- Docker Compose `backup` service environment variables
+
+### Docker Compose Services
+
+The `docker-compose.yml` file now includes all operational services:
+
+```yaml
+services:
+  # Core services
+  postgres:      # PostgreSQL database (port 5432)
+  sgsg-api:      # Fastify API (port 4000)
+  
+  # Operational services
+  prometheus:    # Metrics collection (port 9090)
+  grafana:       # Metrics visualization (port 3003)
+  elasticsearch: # Log storage (port 9200)
+  logstash:      # Log processing (ports 5044, 5000)
+  kibana:        # Log visualization (port 5601)
+  backup:        # Automated backups (scheduled)
+```
+
+**Start All Services:**
+```bash
+docker-compose up -d postgres prometheus grafana elasticsearch logstash kibana backup sgsg-api
+```
+
+**View Logs:**
+```bash
+docker-compose logs -f [service_name]
+```
+
+### Quick Start Guide
+
+1. **Start all operational services:**
+   ```bash
+   cd /home/goqual/sgsg-demo
+   docker-compose up -d postgres prometheus grafana elasticsearch logstash kibana backup
+   ```
+
+2. **Start the API server:**
+   ```bash
+   cd sgsg-api
+   npm run dev
+   ```
+
+3. **Access the interfaces:**
+   - API Documentation: http://localhost:4000/documentation
+   - Grafana Dashboards: http://localhost:3003 (admin/admin)
+   - Kibana Logs: http://localhost:5601
+   - Prometheus: http://localhost:9090
+
+4. **Verify metrics are being collected:**
+   ```bash
+   curl http://localhost:4000/metrics
+   ```
+
+5. **Check logs are being processed:**
+   ```bash
+   tail -f logs/app.log
+   ```
+
+### Configuration Files
+
+Key configuration files for operational features:
+
+1. **Prometheus**: `docker/prometheus/prometheus.yml`
+   - Configures scraping targets and intervals
+   - Targets `host.docker.internal:4000` for API metrics
+
+2. **Grafana**: `docker/grafana/provisioning/datasources/prometheus.yml`
+   - Sets up Prometheus as data source
+   - Pre-configured for dashboard import
+
+3. **Logstash**: `docker/logstash/logstash.conf`
+   - Defines input (file), filter (JSON), output (Elasticsearch) pipeline
+   - Processes `./logs/app.log` JSON logs
+
+4. **Backup Script**: `scripts/backup.sh`
+   - Performs `pg_dump` with compression and error handling
+   - Implements retention policy
+
+5. **Fastify Configuration**: `sgsg-api/src/app.ts`
+   - Swagger/OpenAPI setup (lines 30-36)
+   - Prometheus metrics registration (lines 56-67)
+   - Structured logging with file output (lines 210-218)
+
+### Environment Variables
+
+Add these to your `.env` file for operational features:
+
+```bash
+# Logging
+LOG_LEVEL=info
+LOG_FILE=./logs/app.log
+
+# Monitoring
+PROMETHEUS_TARGETS=host.docker.internal:4000
+
+# Backup
+BACKUP_DIR=./backups
+RETENTION_DAYS=7
+CRON_SCHEDULE="0 2 * * *"  # Daily at 2 AM
+
+# ELK Stack (defaults usually sufficient)
+ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+```
+
+**Note:** The backup service uses environment variables from Docker Compose, not the `.env` file.
 
 ---
 

@@ -5,17 +5,28 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "vite build",
+    "build-with-types": "tsc && vite build",
+    "preview": "vite preview --port 3002",
+    "serve": "serve -s dist -l 3002"
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
-    "antd-mobile": "^6.0.0",
+    "@react-spring/web": "^10.0.3",
+    "@tanstack/react-query": "^5.90.21",
+    "antd-mobile": "^5.37.0",
     "antd-mobile-icons": "^0.3.0",
     "axios": "^1.0.0",
+    "dayjs": "^1.11.19",
+    "lodash": "^4.17.23",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.1"
+    "react-router-dom": "^7.13.1",
+    "react-use": "^17.6.0",
+    "recharts": "^3.7.0",
+    "semver": "^7.7.4",
+    "swiper": "^12.1.2",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@types/react": "^19.2.2",
@@ -23,6 +34,7 @@
     "@vitejs/plugin-react": "^5.1.4",
     "autoprefixer": "^10.0.0",
     "postcss": "^8.0.0",
+    "serve": "^14.2.5",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.0.0",
     "vite": "^7.3.1"

@@ -1,5 +1,70 @@
 {
   "$schema": "https://charm.land/crush.json",
+  "providers": {
+    "openrouter": {
+      "type": "openai-compat",
+      "base_url": "https://openrouter.ai/api/v1",
+      "api_key": "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"
+    },
+    "deepseek": {
+      "type": "openai-compat",
+      "base_url": "https://api.deepseek.com",
+      "api_key": "$DEEPSEEK_API_KEY",
+      "model_overrides": {
+        "deepseek-chat": {
+          "max_tokens": 8192,
+          "temperature": 0.1,
+          "top_p": 0.9,
+          "stream": false,
+          "timeout": 180,
+          "stop": null
+        },
+        "deepseek-coder": {
+          "max_tokens": 8192,
+          "temperature": 0.1,
+          "top_p": 0.9,
+          "stream": false,
+          "timeout": 180,
+          "stop": null
+        }
+      },
+      "request_settings": {
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        "timeout": 180,
+        "connect_timeout": 30,
+        "read_timeout": 150
+      },
+      "error_handling": {
+        "max_retries": 3,
+        "backoff_factor": 2.0,
+        "retry_delays": [2, 4, 8],
+        "retry_on_timeout": true,
+        "retry_on_rate_limit": true,
+        "retry_on_server_error": true,
+        "json_validation": {
+          "enabled": true,
+          "auto_repair": true,
+          "strict_mode": false
+        }
+      },
+      "response_processing": {
+        "strip_markdown_blocks": true,
+        "validate_json": true,
+        "fallback_on_error": true
+      }
+    }
+  },
+  "model": {
+    "default_provider": "deepseek",
+    "default_model": "deepseek-chat",
+    "fallback_provider": "openrouter",
+    "fallback_model": "anthropic/claude-3.5-sonnet",
+    "tool_use_model": "deepseek-chat",
+    "coding_model": "deepseek-coder"
+  },
   "lsp": {
     "typescript": {
       "command": "npx",
@@ -40,11 +105,31 @@
   "permissions": {
     "allowed_tools": [
       "view",
-      "ls",
+      "ls", 
       "grep",
       "edit",
       "bash",
-      "postgres_query"
-    ]
+      "postgres_query",
+      "multiedit",
+      "write",
+      "glob",
+      "download",
+      "fetch",
+      "agentic_fetch",
+      "agent",
+      "todos"
+    ],
+    "api_access": {
+      "deepseek": {
+        "rate_limit": "100/minute",
+        "concurrent_requests": 5,
+        "priority": "high"
+      },
+      "openrouter": {
+        "rate_limit": "50/minute", 
+        "concurrent_requests": 3,
+        "priority": "medium"
+      }
+    }
   }
 }

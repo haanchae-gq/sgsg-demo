@@ -1,0 +1,45 @@
+{
+  "name": "sgsg-customer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build-with-types": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview --port 3003",
+    "serve": "serve -s dist -l 3003"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^6.1.0",
+    "@tanstack/react-query": "^5.90.21",
+    "antd-mobile": "^5.42.3",
+    "axios": "^1.13.6",
+    "dayjs": "^1.11.19",
+    "lodash": "^4.17.23",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.1",
+    "react-use": "^17.6.0",
+    "semver": "^7.7.4",
+    "swiper": "^12.1.2",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/lodash": "^4.17.24",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "serve": "^14.2.5",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.48.0",
+    "vite": "^7.3.1"
+  }
+}

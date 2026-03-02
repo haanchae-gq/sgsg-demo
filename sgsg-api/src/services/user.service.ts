@@ -1,4 +1,4 @@
-import { PrismaClient } from '../generated/prisma/client'
+import { PrismaClient } from '@prisma/client'
 import { FastifyInstance } from 'fastify'
 
 export class UserService {
@@ -12,6 +12,8 @@ export class UserService {
 
   // 현재 사용자 프로필 조회
   async getProfile(userId: string) {
+    console.log('UserService.getProfile called with userId:', userId)
+    console.log('Prisma client:', this.prisma?.user ? 'has user model' : 'no user model')
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -29,6 +31,13 @@ export class UserService {
       }
     })
 
+    console.log('UserService.getProfile user:', user)
+    console.log('User type:', typeof user)
+    if (user) {
+      console.log('User id:', user.id)
+      console.log('User customer:', user.customer)
+    }
+
     if (!user) {
       throw {
         code: 'NOT_FOUND',
@@ -44,7 +53,7 @@ export class UserService {
           totalSpent: user.customer.totalSpent,
           totalOrders: user.customer.totalOrders,
           favoriteCategories: user.customer.favoriteCategories,
-          lastServiceDate: user.customer.lastServiceDate?.toISOString(),
+          lastServiceDate: user.customer.lastServiceDate ? user.customer.lastServiceDate.toISOString() : null,
           preferences: user.customer.preferences
         }
       }
@@ -138,9 +147,67 @@ export class UserService {
         addresses: {
           where: { isDefault: true },
           take: 1
-        }
+        },
+        customer: true,
+        expert: {
+          include: {
+            businessAddress: true
+          }
+        },
+        admin: true
       }
     })
+
+    // 역할별 추가 정보 처리 (getProfile과 동일한 로직)
+    let roleSpecificData = {}
+    if (updatedUser.role === 'customer' && updatedUser.customer) {
+      roleSpecificData = {
+        customer: {
+          totalSpent: updatedUser.customer.totalSpent,
+          totalOrders: updatedUser.customer.totalOrders,
+          favoriteCategories: updatedUser.customer.favoriteCategories,
+          lastServiceDate: updatedUser.customer.lastServiceDate ? updatedUser.customer.lastServiceDate.toISOString() : null,
+          preferences: updatedUser.customer.preferences
+        }
+      }
+    } else if (updatedUser.role === 'expert' && updatedUser.expert) {
+      roleSpecificData = {
+        expert: {
+          businessName: updatedUser.expert.businessName,
+          businessNumber: updatedUser.expert.businessNumber,
+          businessType: updatedUser.expert.businessType,
+          serviceRegions: updatedUser.expert.serviceRegions,
+          rating: updatedUser.expert.rating,
+          totalCompletedOrders: updatedUser.expert.totalCompletedOrders,
+          totalEarnings: updatedUser.expert.totalEarnings,
+          operationalStatus: updatedUser.expert.operationalStatus,
+          bankName: updatedUser.expert.bankName,
+          accountNumber: updatedUser.expert.accountNumber,
+          accountHolder: updatedUser.expert.accountHolder,
+          introduction: updatedUser.expert.introduction,
+          certificateUrls: updatedUser.expert.certificateUrls,
+          portfolioImages: updatedUser.expert.portfolioImages,
+          approvalStatus: updatedUser.expert.approvalStatus,
+          activeStatus: updatedUser.expert.activeStatus,
+          membershipEnabled: updatedUser.expert.membershipEnabled,
+          membershipSlotCount: updatedUser.expert.membershipSlotCount,
+          businessAddress: updatedUser.expert.businessAddress ? {
+            ...updatedUser.expert.businessAddress,
+            createdAt: updatedUser.expert.businessAddress.createdAt.toISOString(),
+            updatedAt: updatedUser.expert.businessAddress.updatedAt.toISOString()
+          } : null
+        }
+      }
+    } else if (updatedUser.role === 'admin' && updatedUser.admin) {
+      roleSpecificData = {
+        admin: {
+          department: updatedUser.admin.department,
+          position: updatedUser.admin.position,
+          permissions: updatedUser.admin.permissions,
+          lastActiveAt: updatedUser.admin.lastActiveAt?.toISOString()
+        }
+      }
+    }
 
     // 기본 주소 처리
     const defaultAddress = updatedUser.addresses.length > 0 ? {
@@ -165,7 +232,8 @@ export class UserService {
         createdAt: updatedUser.createdAt.toISOString(),
         updatedAt: updatedUser.updatedAt.toISOString()
       },
-      defaultAddress
+      defaultAddress,
+      ...roleSpecificData
     }
   }
 

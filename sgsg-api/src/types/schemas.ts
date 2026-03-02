@@ -109,7 +109,10 @@ export const JwtPayloadSchema = Type.Object({
   masterAccountId: Type.Optional(Type.String()),
   isSubAccount: Type.Optional(Type.Boolean()),
   type: Type.Optional(Type.String()), // 'access', 'refresh', 'reset'
-  jti: Type.Optional(Type.String()) // JWT ID for refresh token uniqueness
+  jti: Type.Optional(Type.String()), // JWT ID for refresh token uniqueness
+  adminId: Type.Optional(Type.String()),
+  customerId: Type.Optional(Type.String()),
+  expertId: Type.Optional(Type.String())
 })
 
 // 회원가입 요청
@@ -148,6 +151,17 @@ export const ForgotPasswordRequestSchema = Type.Object({
 export const ResetPasswordRequestSchema = Type.Object({
   token: Type.String(),
   newPassword: Type.String({ minLength: 8, maxLength: 100 })
+})
+
+// 이메일 인증 요청
+export const VerifyEmailRequestSchema = Type.Object({
+  token: Type.String()
+})
+
+// 휴대폰 인증 요청
+export const VerifyPhoneRequestSchema = Type.Object({
+  phone: Type.String({ pattern: '^01[0-9]{8,9}$' }),
+  code: Type.String({ minLength: 6, maxLength: 6 })
 })
 
 // ==================== 공통 응답 형식 ====================
@@ -227,7 +241,6 @@ export const SubAccountSchema = Type.Object({
   accountType: AccountType,
   approvalStatus: ExpertApprovalStatus,
   activeStatus: ExpertActiveStatus,
-  isActive: Type.Boolean(),
   permissions: Type.Array(Type.String()),
   assignedWorkerId: Type.Optional(Type.String()),
   user: Type.Optional(UserSchema)
@@ -296,7 +309,8 @@ export const SubAccountCreateRequestSchema = Type.Object({
 // 서브 계정 업데이트 요청
 export const SubAccountUpdateRequestSchema = Type.Object({
   permissions: Type.Optional(Type.Array(Type.String())),
-  isActive: Type.Optional(Type.Boolean())
+  activeStatus: Type.Optional(ExpertActiveStatus),
+  assignedWorkerId: Type.Optional(Type.String())
 })
 
 // ==================== TypeScript 타입 추출 ====================
@@ -310,6 +324,8 @@ export type AuthResponse = Static<typeof AuthResponseSchema>
 export type RefreshTokenRequest = Static<typeof RefreshTokenRequestSchema>
 export type ForgotPasswordRequest = Static<typeof ForgotPasswordRequestSchema>
 export type ResetPasswordRequest = Static<typeof ResetPasswordRequestSchema>
+export type VerifyEmailRequest = Static<typeof VerifyEmailRequestSchema>
+export type VerifyPhoneRequest = Static<typeof VerifyPhoneRequestSchema>
 export type PaginationQuery = Static<typeof PaginationQuerySchema>
 export type SearchQuery = Static<typeof SearchQuerySchema>
 

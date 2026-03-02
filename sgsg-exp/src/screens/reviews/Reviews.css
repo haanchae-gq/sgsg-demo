@@ -1,0 +1,335 @@
+.reviews-screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+}
+
+.reviews-content {
+  flex: 1;
+  overflow: hidden;
+  padding: 16px 16px 0 16px;
+}
+
+.stats-card {
+  margin-bottom: 16px;
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.stats-card .adm-card-body {
+  padding: 24px;
+}
+
+.stats-header {
+  text-align: center;
+}
+
+.average-rating {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.rating-number {
+  font-size: 48px;
+  font-weight: 600;
+  color: white;
+  line-height: 1;
+}
+
+.average-rating .adm-rate {
+  --star-size: 20px;
+}
+
+.average-rating .adm-rate .adm-rate-star-fill {
+  color: #ffd700;
+}
+
+.total-reviews {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.star-distribution-card {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.star-distribution-card .adm-card-body {
+  padding: 20px;
+}
+
+.star-distribution-card h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.distribution-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.distribution-item {
+  display: grid;
+  grid-template-columns: 40px 1fr 30px;
+  align-items: center;
+  gap: 12px;
+}
+
+.star-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: #333;
+}
+
+.star-label .antd-mobile-icon {
+  color: #ffd700;
+  font-size: 16px;
+}
+
+.count {
+  font-size: 12px;
+  color: #666;
+  text-align: right;
+}
+
+.reviews-tabs {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.reviews-tabs .adm-tabs-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.reviews-tabs .adm-tabs-tab-wrapper {
+  background: white;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 0;
+}
+
+.reviews-tabs .adm-tabs-tab {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.reviews-list {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 0 80px 0; /* 하단 여백 */
+  background: white;
+  border-radius: 0 0 12px 12px;
+}
+
+.review-card {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.review-card .adm-card-body {
+  padding: 16px;
+}
+
+.review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.customer-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.customer-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.customer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.customer-avatar .antd-mobile-icon {
+  font-size: 20px;
+  color: #999;
+}
+
+.customer-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.review-date {
+  font-size: 12px;
+  color: #999;
+}
+
+.review-rating .adm-rate {
+  --star-size: 14px;
+}
+
+.review-service {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.service-category {
+  color: #1890ff;
+  font-weight: 500;
+}
+
+.order-number {
+  color: #999;
+}
+
+.review-content {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 3px solid #1890ff;
+}
+
+.review-images {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+  max-width: 280px;
+}
+
+.review-images img {
+  width: 100%;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+
+.review-response {
+  background: #f0f9ff;
+  border: 1px solid #e1f5fe;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+}
+
+.response-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #666;
+}
+
+.response-header .antd-mobile-icon {
+  color: #1890ff;
+  font-size: 14px;
+}
+
+.response-date {
+  margin-left: auto;
+  color: #999;
+}
+
+.response-content {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.4;
+}
+
+.review-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* 모달 스타일 */
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.modal-actions .adm-button {
+  flex: 1;
+}
+
+/* Form 스타일 */
+.adm-form-item {
+  margin-bottom: 20px;
+}
+
+.adm-form-item-label {
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.adm-text-area {
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 100px;
+}
+
+.adm-text-area:focus {
+  border-color: #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+}
+
+/* Empty 스타일 */
+.adm-empty {
+  padding: 60px 20px;
+}
+
+/* Progress Bar 커스터마이징 */
+.adm-progress-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: #f5f5f5;
+}
+
+.adm-progress-bar-fill {
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}

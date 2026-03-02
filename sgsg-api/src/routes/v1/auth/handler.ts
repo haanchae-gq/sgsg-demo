@@ -5,7 +5,9 @@ import {
   LoginRequest,
   RefreshTokenRequest,
   ForgotPasswordRequest,
-  ResetPasswordRequest
+  ResetPasswordRequest,
+  VerifyEmailRequest,
+  VerifyPhoneRequest
 } from '../../../types/schemas'
 
 // 에러 코드를 HTTP 상태 코드로 매핑하는 헬퍼 함수
@@ -17,6 +19,9 @@ function mapErrorCodeToStatusCode(code: string): number {
     case 'AUTH_001':
     case 'AUTH_003':
     case 'AUTH_004':
+    case 'AUTH_005':
+    case 'AUTH_006':
+    case 'AUTH_007':
       return 401 // Unauthorized
     case 'AUTH_002':
       return 403 // Forbidden
@@ -145,32 +150,32 @@ export async function logoutHandler(
   }
 }
 
-// 이메일 인증 확인 핸들러 (TODO: 실제 구현 필요)
+// 이메일 인증 확인 핸들러
 export async function verifyEmailHandler(
-  request: FastifyRequest<{ Body: { token: string } }>,
+  request: FastifyRequest<{ Body: VerifyEmailRequest }>,
   reply: FastifyReply
 ) {
   try {
-    // TODO: 이메일 인증 토큰 검증 및 사용자 상태 업데이트 구현
-    return reply.status(200).send(formatSuccessResponse({
-      message: '이메일 인증이 완료되었습니다.'
-    }))
+    const authService = new AuthService(request.server)
+    const result = await authService.verifyEmail(request.body.token)
+    
+    return reply.status(200).send(formatSuccessResponse(result))
   } catch (error: any) {
     const statusCode = mapErrorCodeToStatusCode(error.code)
     return reply.status(statusCode).send(formatErrorResponse(error))
   }
 }
 
-// 휴대폰 인증 확인 핸들러 (TODO: 실제 구현 필요)
+// 휴대폰 인증 확인 핸들러
 export async function verifyPhoneHandler(
-  request: FastifyRequest<{ Body: { phone: string; code: string } }>,
+  request: FastifyRequest<{ Body: VerifyPhoneRequest }>,
   reply: FastifyReply
 ) {
   try {
-    // TODO: 휴대폰 인증 코드 검증 및 사용자 상태 업데이트 구현
-    return reply.status(200).send(formatSuccessResponse({
-      message: '휴대폰 인증이 완료되었습니다.'
-    }))
+    const authService = new AuthService(request.server)
+    const result = await authService.verifyPhone(request.body.phone, request.body.code)
+    
+    return reply.status(200).send(formatSuccessResponse(result))
   } catch (error: any) {
     const statusCode = mapErrorCodeToStatusCode(error.code)
     return reply.status(statusCode).send(formatErrorResponse(error))

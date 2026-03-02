@@ -22,7 +22,6 @@ async function buildTestApp() {
   const adapter = new PrismaPg(pool)
   const prisma = new PrismaClient({
     adapter,
-    log: ['error'],
   })
 
   // Prisma Client 주입

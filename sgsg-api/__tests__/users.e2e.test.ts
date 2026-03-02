@@ -23,7 +23,6 @@ async function buildTestApp() {
   const adapter = new PrismaPg(pool)
   const prisma = new PrismaClient({
     adapter,
-    log: ['error'],
   })
 
   // Prisma Client 주입
@@ -43,6 +42,41 @@ async function buildTestApp() {
   await app.register(cors, { origin: '*' })
   await app.register(helmet)
   await app.register(authPlugin)
+
+  // Error handler for validation errors
+  app.setErrorHandler(async (error: any, request, reply) => {
+    if (error.validation) {
+      // Fastify 스키마 검증 오류를 400으로 처리
+      return reply.status(400).send({
+        success: false,
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: '요청 데이터가 유효하지 않습니다.',
+          details: error.validation
+        }
+      })
+    }
+    
+    if (error.statusCode === 400) {
+      return reply.status(400).send({
+        success: false,
+        error: {
+          code: 'BAD_REQUEST',
+          message: error.message || '잘못된 요청입니다.'
+        }
+      })
+    }
+
+    // 기타 에러는 500으로 처리
+    request.log.error(error)
+    return reply.status(500).send({
+      success: false,
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: '서버 내부 오류가 발생했습니다.'
+      }
+    })
+  })
 
   // 라우트 등록
   app.register(async (api) => {
@@ -125,16 +159,17 @@ describe('사용자 관리 API E2E 테스트', () => {
     await app.close()
   })
 
-  describe('GET /api/v1/users/profile - 현재 사용자 프로필 조회', () => {
+  describe('GET /api/v1/users/me - 현재 사용자 프로필 조회', () => {
     test('인증된 사용자는 자신의 프로필을 조회할 수 있다', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/users/profile',
+        url: '/api/v1/users/me',
         headers: {
           authorization: `Bearer ${testToken}`
         }
       })
-
+      
+      console.log('Response payload:', response.payload)
       expect(response.statusCode).toBe(200)
       const result = JSON.parse(response.payload)
       expect(result.success).toBe(true)
@@ -149,7 +184,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     test('인증되지 않은 사용자는 프로필을 조회할 수 없다', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/users/profile'
+        url: '/api/v1/users/me'
         // 헤더에 토큰 없음
       })
 
@@ -157,7 +192,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     })
   })
 
-  describe('PUT /api/v1/users/profile - 현재 사용자 프로필 수정', () => {
+  describe('PUT /api/v1/users/me - 현재 사용자 프로필 수정', () => {
     test('인증된 사용자는 자신의 프로필을 수정할 수 있다', async () => {
       const updateData = {
         name: '수정된 이름',
@@ -166,7 +201,7 @@ describe('사용자 관리 API E2E 테스트', () => {
 
       const response = await app.inject({
         method: 'PUT',
-        url: '/api/v1/users/profile',
+        url: '/api/v1/users/me',
         headers: {
           authorization: `Bearer ${testToken}`,
           'content-type': 'application/json'
@@ -184,7 +219,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     test('유효하지 않은 데이터로는 프로필을 수정할 수 없다', async () => {
       const response = await app.inject({
         method: 'PUT',
-        url: '/api/v1/users/profile',
+        url: '/api/v1/users/me',
         headers: {
           authorization: `Bearer ${testToken}`,
           'content-type': 'application/json'
@@ -196,7 +231,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     })
   })
 
-  describe('GET /api/v1/users/addresses - 사용자 주소록 조회', () => {
+  describe('GET /api/v1/users/me/addresses - 사용자 주소록 조회', () => {
     beforeEach(async () => {
       // 각 테스트 전에 주소 데이터 정리
       await prisma.address.deleteMany({ where: { userId: testUser.id } })
@@ -219,7 +254,7 @@ describe('사용자 관리 API E2E 테스트', () => {
 
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/users/addresses',
+        url: '/api/v1/users/me/addresses',
         headers: {
           authorization: `Bearer ${testToken}`
         }
@@ -237,7 +272,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     test('주소가 없으면 빈 배열을 반환한다', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/users/addresses',
+        url: '/api/v1/users/me/addresses',
         headers: {
           authorization: `Bearer ${testToken}`
         }
@@ -251,7 +286,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     })
   })
 
-  describe('POST /api/v1/users/addresses - 주소 추가', () => {
+  describe('POST /api/v1/users/me/addresses - 주소 추가', () => {
     beforeEach(async () => {
       await prisma.address.deleteMany({ where: { userId: testUser.id } })
     })
@@ -270,7 +305,7 @@ describe('사용자 관리 API E2E 테스트', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/api/v1/users/addresses',
+        url: '/api/v1/users/me/addresses',
         headers: {
           authorization: `Bearer ${testToken}`,
           'content-type': 'application/json'
@@ -297,7 +332,7 @@ describe('사용자 관리 API E2E 테스트', () => {
 
       const response = await app.inject({
         method: 'POST',
-        url: '/api/v1/users/addresses',
+        url: '/api/v1/users/me/addresses',
         headers: {
           authorization: `Bearer ${testToken}`,
           'content-type': 'application/json'
@@ -305,11 +340,11 @@ describe('사용자 관리 API E2E 테스트', () => {
         payload: invalidData
       })
 
-      expect(response.statusCode).toBe(409) // VALIDATION_001 -> 409
+      expect(response.statusCode).toBe(400) // Fastify schema validation error
     })
   })
 
-  describe('PUT /api/v1/users/addresses/:addressId - 주소 수정', () => {
+  describe('PUT /api/v1/users/me/addresses/:addressId - 주소 수정', () => {
     beforeEach(async () => {
       await prisma.address.deleteMany({ where: { userId: testUser.id } })
       // 테스트 주소 생성
@@ -336,7 +371,7 @@ describe('사용자 관리 API E2E 테스트', () => {
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/api/v1/users/addresses/${testAddressId}`,
+        url: `/api/v1/users/me/addresses/${testAddressId}`,
         headers: {
           authorization: `Bearer ${testToken}`,
           'content-type': 'application/json'
@@ -378,7 +413,7 @@ describe('사용자 관리 API E2E 테스트', () => {
 
       const response = await app.inject({
         method: 'PUT',
-        url: `/api/v1/users/addresses/${otherAddress.id}`,
+        url: `/api/v1/users/me/addresses/${otherAddress.id}`,
         headers: {
           authorization: `Bearer ${testToken}`,
           'content-type': 'application/json'
@@ -394,7 +429,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     })
   })
 
-  describe('DELETE /api/v1/users/addresses/:addressId - 주소 삭제', () => {
+  describe('DELETE /api/v1/users/me/addresses/:addressId - 주소 삭제', () => {
     beforeEach(async () => {
       await prisma.address.deleteMany({ where: { userId: testUser.id } })
       // 테스트 주소 생성 (기본 주소 아님)
@@ -416,7 +451,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     test('인증된 사용자는 자신의 주소를 삭제할 수 있다', async () => {
       const response = await app.inject({
         method: 'DELETE',
-        url: `/api/v1/users/addresses/${testAddressId}`,
+        url: `/api/v1/users/me/addresses/${testAddressId}`,
         headers: {
           authorization: `Bearer ${testToken}`
         }
@@ -445,7 +480,7 @@ describe('사용자 관리 API E2E 테스트', () => {
 
       const response = await app.inject({
         method: 'DELETE',
-        url: `/api/v1/users/addresses/${defaultAddress.id}`,
+        url: `/api/v1/users/me/addresses/${defaultAddress.id}`,
         headers: {
           authorization: `Bearer ${testToken}`
         }
@@ -455,7 +490,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     })
   })
 
-  describe('GET /api/v1/users/notifications - 알림 목록 조회', () => {
+  describe('GET /api/v1/users/me/notifications - 알림 목록 조회', () => {
     beforeEach(async () => {
       await prisma.notification.deleteMany({ where: { userId: testUser.id } })
       // 테스트 알림 생성
@@ -482,7 +517,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     test('인증된 사용자는 자신의 알림 목록을 조회할 수 있다', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/users/notifications',
+        url: '/api/v1/users/me/notifications',
         headers: {
           authorization: `Bearer ${testToken}`
         }
@@ -500,7 +535,7 @@ describe('사용자 관리 API E2E 테스트', () => {
     test('페이지네이션 파라미터를 사용할 수 있다', async () => {
       const response = await app.inject({
         method: 'GET',
-        url: '/api/v1/users/notifications?page=1&limit=1',
+        url: '/api/v1/users/me/notifications?page=1&limit=1',
         headers: {
           authorization: `Bearer ${testToken}`
         }
@@ -515,11 +550,25 @@ describe('사용자 관리 API E2E 테스트', () => {
     })
   })
 
-  describe('POST /api/v1/users/notifications/:notificationId/read - 알림 읽음 표시', () => {
+  describe('PUT /api/v1/users/me/notifications/:notificationId/read - 알림 읽음 표시', () => {
+    beforeEach(async () => {
+      // 테스트 알림 생성
+      const notification = await prisma.notification.create({
+        data: {
+          userId: testUser.id,
+          type: 'system',
+          title: '읽음 테스트 알림',
+          message: '이 알림은 읽음 테스트용입니다.',
+          data: {}
+        }
+      })
+      testNotificationId = notification.id
+    })
+
     test('인증된 사용자는 알림을 읽음 상태로 표시할 수 있다', async () => {
       const response = await app.inject({
-        method: 'POST',
-        url: `/api/v1/users/notifications/${testNotificationId}/read`,
+        method: 'PUT',
+        url: `/api/v1/users/me/notifications/${testNotificationId}/read`,
         headers: {
           authorization: `Bearer ${testToken}`
         }
@@ -534,8 +583,8 @@ describe('사용자 관리 API E2E 테스트', () => {
 
     test('존재하지 않는 알림은 읽음 상태로 표시할 수 없다', async () => {
       const response = await app.inject({
-        method: 'POST',
-        url: '/api/v1/users/notifications/invalid-notification-id/read',
+        method: 'PUT',
+        url: '/api/v1/users/me/notifications/invalid-notification-id/read',
         headers: {
           authorization: `Bearer ${testToken}`
         }

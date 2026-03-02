@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "pm2": "^6.0.14",
     "prisma": "^7.4.2"
   },
   "dependencies": {

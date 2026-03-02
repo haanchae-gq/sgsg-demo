@@ -50,6 +50,24 @@ export const NotificationSchema = Type.Object({
 })
 
 // ==================== 프로필 스키마 ====================
+
+// 고객 정보 스키마
+export const CustomerSchema = Type.Object({
+  totalSpent: Type.Number({ minimum: 0 }),
+  totalOrders: Type.Integer({ minimum: 0 }),
+  favoriteCategories: Type.Array(Type.String()),
+  lastServiceDate: Type.Optional(Type.String({ format: 'date-time' })),
+  preferences: Type.Optional(Type.Any())
+})
+
+// 전체 프로필 응답 스키마
+export const ProfileResponseSchema = Type.Object({
+  user: UserSchema,
+  defaultAddress: Type.Optional(AddressSchema),
+  customer: Type.Optional(CustomerSchema)
+  // expert와 admin 스키마도 필요하면 추가
+})
+
 export const ProfileUpdateSchema = Type.Object({
   name: Type.Optional(Type.String({ minLength: 2, maxLength: 50 })),
   avatarUrl: Type.Optional(Type.String()),
@@ -61,7 +79,7 @@ export const ProfileUpdateSchema = Type.Object({
 // 현재 사용자 프로필 조회 스키마
 export const GetProfileSchema = {
   response: {
-    200: SuccessResponseSchema(UserSchema),
+    200: SuccessResponseSchema(ProfileResponseSchema),
     401: ErrorResponseSchema,
     404: ErrorResponseSchema,
     500: ErrorResponseSchema
@@ -72,7 +90,7 @@ export const GetProfileSchema = {
 export const UpdateProfileSchema = {
   body: ProfileUpdateSchema,
   response: {
-    200: SuccessResponseSchema(UserSchema),
+    200: SuccessResponseSchema(ProfileResponseSchema),
     400: ErrorResponseSchema,
     401: ErrorResponseSchema,
     404: ErrorResponseSchema,
@@ -93,9 +111,7 @@ export const GetAddressesSchema = {
 export const AddAddressSchema = {
   body: AddressCreateSchema,
   response: {
-    201: SuccessResponseSchema(Type.Object({
-      addressId: Type.String()
-    })),
+    201: SuccessResponseSchema(AddressSchema),
     400: ErrorResponseSchema,
     401: ErrorResponseSchema,
     409: ErrorResponseSchema,
@@ -110,9 +126,7 @@ export const UpdateAddressSchema = {
   }),
   body: AddressUpdateSchema,
   response: {
-    200: SuccessResponseSchema(Type.Object({
-      message: Type.String()
-    })),
+    200: SuccessResponseSchema(AddressSchema),
     400: ErrorResponseSchema,
     401: ErrorResponseSchema,
     404: ErrorResponseSchema,
@@ -127,7 +141,7 @@ export const DeleteAddressSchema = {
   }),
   response: {
     200: SuccessResponseSchema(Type.Object({
-      message: Type.String()
+      success: Type.Boolean()
     })),
     401: ErrorResponseSchema,
     404: ErrorResponseSchema,
@@ -162,9 +176,7 @@ export const MarkNotificationAsReadSchema = {
     notificationId: Type.String()
   }),
   response: {
-    200: SuccessResponseSchema(Type.Object({
-      message: Type.String()
-    })),
+    200: SuccessResponseSchema(NotificationSchema),
     401: ErrorResponseSchema,
     404: ErrorResponseSchema,
     500: ErrorResponseSchema

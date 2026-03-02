@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from 'fastify'
 import { UserService } from '../../../services/user.service'
+import { AppError } from '../../../types/errors.js'
 
 // 에러 코드를 HTTP 상태 코드로 매핑하는 헬퍼 함수
 function mapErrorCodeToStatusCode(code: string): number {
@@ -47,13 +48,26 @@ export async function getProfileHandler(
   reply: FastifyReply
 ) {
   try {
+    if (!request.user) {
+      throw new AppError('AUTH_001', '인증이 필요합니다.', 401)
+    }
+    console.log('getProfileHandler called with userId:', request.user.userId)
     const userService = new UserService(request.server)
     const result = await userService.getProfile(request.user.userId)
+    console.log('getProfileHandler result:', result)
     
-    return reply.status(200).send(formatSuccessResponse(result))
+    const response = formatSuccessResponse(result)
+    console.log('getProfileHandler response:', response)
+    return reply.status(200).send(response)
   } catch (error: any) {
+    console.log('getProfileHandler caught error:', error)
+    console.log('Error code:', error.code)
+    console.log('Error message:', error.message)
     const statusCode = mapErrorCodeToStatusCode(error.code)
-    return reply.status(statusCode).send(formatErrorResponse(error))
+    console.log('Mapped status code:', statusCode)
+    const formattedError = formatErrorResponse(error)
+    console.log('Formatted error:', formattedError)
+    return reply.status(statusCode).send(formattedError)
   }
 }
 
@@ -63,6 +77,9 @@ export async function updateProfileHandler(
   reply: FastifyReply
 ) {
   try {
+    if (!request.user) {
+      throw new AppError('AUTH_001', '인증이 필요합니다.', 401)
+    }
     const userService = new UserService(request.server)
     const result = await userService.updateProfile(request.user.userId, request.body)
     
@@ -79,6 +96,9 @@ export async function getAddressesHandler(
   reply: FastifyReply
 ) {
   try {
+    if (!request.user) {
+      throw new AppError('AUTH_001', '인증이 필요합니다.', 401)
+    }
     const userService = new UserService(request.server)
     const result = await userService.getAddresses(request.user.userId)
     
@@ -95,6 +115,9 @@ export async function addAddressHandler(
   reply: FastifyReply
 ) {
   try {
+    if (!request.user) {
+      throw new AppError('AUTH_001', '인증이 필요합니다.', 401)
+    }
     const userService = new UserService(request.server)
     const result = await userService.addAddress(request.user.userId, request.body)
     
@@ -111,6 +134,9 @@ export async function updateAddressHandler(
   reply: FastifyReply
 ) {
   try {
+    if (!request.user) {
+      throw new AppError('AUTH_001', '인증이 필요합니다.', 401)
+    }
     const userService = new UserService(request.server)
     const result = await userService.updateAddress(
       request.user.userId,
@@ -131,6 +157,9 @@ export async function deleteAddressHandler(
   reply: FastifyReply
 ) {
   try {
+    if (!request.user) {
+      throw new AppError('AUTH_001', '인증이 필요합니다.', 401)
+    }
     const userService = new UserService(request.server)
     const result = await userService.deleteAddress(
       request.user.userId,
@@ -150,6 +179,9 @@ export async function getNotificationsHandler(
   reply: FastifyReply
 ) {
   try {
+    if (!request.user) {
+      throw new AppError('AUTH_001', '인증이 필요합니다.', 401)
+    }
     const userService = new UserService(request.server)
     const result = await userService.getNotifications(
       request.user.userId,
@@ -170,6 +202,9 @@ export async function markNotificationAsReadHandler(
   reply: FastifyReply
 ) {
   try {
+    if (!request.user) {
+      throw new AppError('AUTH_001', '인증이 필요합니다.', 401)
+    }
     const userService = new UserService(request.server)
     const result = await userService.markNotificationAsRead(
       request.user.userId,
